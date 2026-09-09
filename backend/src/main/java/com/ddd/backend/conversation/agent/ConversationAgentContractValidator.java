@@ -7,6 +7,7 @@ import java.util.*;
 public final class ConversationAgentContractValidator {
     private static final Set<ConversationInteractionMode> SNAPSHOT_REQUIRED = EnumSet.of(
             ConversationInteractionMode.AUTO_EXECUTE, ConversationInteractionMode.GUIDE_USER,
+            ConversationInteractionMode.INFORM_USER,
             ConversationInteractionMode.SECURE_INPUT_REQUIRED, ConversationInteractionMode.RISK_WARNING,
             ConversationInteractionMode.FINAL_CONFIRMATION_REQUIRED, ConversationInteractionMode.COMPLETE);
     private final ConversationMessagePolicy messagePolicy;
@@ -58,6 +59,20 @@ public final class ConversationAgentContractValidator {
                     || candidate.guide().length() > 200) {
                 throw new IllegalArgumentException("GUIDE_USER requires a sanitized semantic target");
             }
+        }
+        if (decision.mode() == ConversationInteractionMode.AUTO_EXECUTE) {
+            var candidate = decision.actionCandidate();
+            if (candidate == null
+                    || !("CLICK".equals(candidate.actionType()) || "TYPE".equals(candidate.actionType()))
+                    || blank(candidate.targetElementId()) || blank(candidate.role())
+                    || blank(candidate.accessibleLabel()) || blank(candidate.guide())) {
+                throw new IllegalArgumentException("AUTO_EXECUTE requires a sanitized CLICK or TYPE target");
+            }
+        }
+        if (decision.mode() == ConversationInteractionMode.INFORM_USER
+                && (decision.message() == null || decision.message().isBlank()
+                || decision.actionCandidate() != null)) {
+            throw new IllegalArgumentException("INFORM_USER requires only a safe message");
         }
         if ((decision.mode() == ConversationInteractionMode.SECURE_INPUT_REQUIRED
                 || decision.mode() == ConversationInteractionMode.RISK_WARNING

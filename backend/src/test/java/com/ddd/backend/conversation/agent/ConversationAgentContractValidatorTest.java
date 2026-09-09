@@ -112,6 +112,30 @@ class ConversationAgentContractValidatorTest {
                 .hasMessageContaining("GOAL_PATCH_PROPOSED");
     }
 
+    @Test
+    void informUserRequiresTheCurrentSnapshotAndNeverCarriesAnAction() {
+        var request = request(new ConversationAgentRequest.SnapshotContext(
+                "snap-1", "page-1", null));
+        var valid = new ConversationAgentDecision(
+                "req-1", "msg-1", request.goal().goalId(), 0,
+                ConversationInteractionMode.INFORM_USER,
+                "현재 화면에서는 예금 업무를 시작할 수 있습니다.",
+                0.9, "CURRENT_PAGE_ANALYSIS", null,
+                "snap-1", null, null, null);
+
+        assertThat(validator.validate(request, valid)).isSameAs(valid);
+
+        var stale = new ConversationAgentDecision(
+                "req-1", "msg-1", request.goal().goalId(), 0,
+                ConversationInteractionMode.INFORM_USER,
+                "현재 화면에서는 예금 업무를 시작할 수 있습니다.",
+                0.9, "CURRENT_PAGE_ANALYSIS", null,
+                "snap-old", null, null, null);
+        assertThatThrownBy(() -> validator.validate(request, stale))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("sourceSnapshotId");
+    }
+
     private ConversationAgentRequest request(
             ConversationAgentRequest.SnapshotContext snapshot
     ) {

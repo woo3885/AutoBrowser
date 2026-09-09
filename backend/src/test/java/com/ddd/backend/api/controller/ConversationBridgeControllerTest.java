@@ -19,6 +19,8 @@ import java.time.Instant;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -68,5 +70,21 @@ class ConversationBridgeControllerTest {
                         .header("Origin", "http://127.0.0.1:5190"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode").value("BRIDGE_401_INVALID_IDENTITY"));
+    }
+
+    @Test
+    void bridgeIdentityHeadersAreAllowedByCorsPreflight() throws Exception {
+        mockMvc.perform(options("/api/v1/sessions/session-1/conversation/bridge")
+                        .header("Origin", "http://127.0.0.1:5190")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers",
+                                "X-DDD-Bridge-Token, X-DDD-Page-Identity"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin",
+                        "http://127.0.0.1:5190"))
+                .andExpect(header().string("Access-Control-Allow-Headers",
+                        org.hamcrest.Matchers.containsStringIgnoringCase("X-DDD-Bridge-Token")))
+                .andExpect(header().string("Access-Control-Allow-Headers",
+                        org.hamcrest.Matchers.containsStringIgnoringCase("X-DDD-Page-Identity")));
     }
 }

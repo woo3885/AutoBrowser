@@ -15,10 +15,14 @@ import com.ddd.backend.conversation.overlay.OverlayTargetStore;
 import com.ddd.backend.conversation.gate.ConversationProtectedGateRegistry;
 import com.ddd.backend.conversation.overlay.OverlayTargetService;
 import com.ddd.backend.automation.dom.SanitizedDomSnapshot;
+import com.ddd.backend.automation.BrowserActionType;
+import com.ddd.backend.automation.BrowserActionExecutionStatus;
+import com.ddd.backend.service.BrowserActionExecutionService;
 
 /** Day 1 ASK_USER orchestration. It never invokes Browser Action execution. */
 @Service
 public final class ConversationAgentCoordinator {
+    private static final int MAX_AUTOMATIC_ACTIONS_PER_TURN = 8;
     private final ConversationService conversations;
     private final SessionMessageMailbox mailbox;
     private final AutomationSessionRepository sessions;
@@ -29,6 +33,7 @@ public final class ConversationAgentCoordinator {
     private OverlayTargetStore overlayTargets;
     private ConversationProtectedGateRegistry protectedGates;
     private OverlayTargetService overlayTargetService;
+    private BrowserActionExecutionService actionExecutionService;
 
     public ConversationAgentCoordinator(ConversationService conversations, SessionMessageMailbox mailbox,
             AutomationSessionRepository sessions, ConversationAgentClient client,
@@ -55,6 +60,11 @@ public final class ConversationAgentCoordinator {
     @Autowired(required = false)
     void setOverlayTargetService(OverlayTargetService overlayTargetService) {
         this.overlayTargetService = overlayTargetService;
+    }
+
+    @Autowired(required = false)
+    void setActionExecutionService(BrowserActionExecutionService actionExecutionService) {
+        this.actionExecutionService = actionExecutionService;
     }
 
     public ConversationAgentDecision process(String sessionId, MessageAcceptance acceptance,
@@ -88,7 +98,9 @@ public final class ConversationAgentCoordinator {
                 String answeredQuestionId = state.activeQuestionId();
                 UserGoal applied = state.applyGoalPatch(decision.goalId(), decision.baseGoalRevision(),
                         decision.requestMessageId(), decision.goalPatch(), null);
-                state.clearQuestion(answeredQuestionId);
+                if (answeredQuestionId != null) {
+                    state.clearQuestion(answeredQuestionId);
+                }
                 session.transitionTo(WorkflowStatus.AI_EXECUTING);
                 sessions.save(session);
                 Instant now = Instant.now();
@@ -101,10 +113,10 @@ public final class ConversationAgentCoordinator {
                     var result = domDecisionService.decideOnce(
                             sessionId, acceptance, state, content, answerToQuestionId);
                     decision = result.decision();
-                    applyDomDecision(sessionId, state, session, decision, result.snapshot());
+                    applyDomDecision(sessionId, state, session, decision, result.snapshot(), 0);
                 }
             } else {
-                throw new IllegalArgumentException("Unsupported conversation decision mode");
+                applyDomDecision(sessionId, state, session, decision, null, 0);
             }
             mailbox.completeActive(sessionId, acceptance.messageId());
         }
@@ -117,19 +129,20 @@ public final class ConversationAgentCoordinator {
         synchronized (state) {
             AutomationSession session = sessions.findById(sessionId)
                     .orElseThrow(() -> new IllegalStateException("Session not found"));
-            applyDomDecision(sessionId, state, session, decision, snapshot);
+            applyDomDecision(sessionId, state, session, decision, snapshot, 0);
         }
     }
 
     private void applyDomDecision(String sessionId, ConversationState state,
             AutomationSession session, ConversationAgentDecision decision,
-            SanitizedDomSnapshot snapshot) {
+            SanitizedDomSnapshot snapshot, int automaticActionCount) {
         if (decision.mode() == ConversationInteractionMode.ASK_USER
                 || decision.mode() == ConversationInteractionMode.GOAL_PATCH_PROPOSED) {
             throw new IllegalArgumentException("Latest DOM decision cannot start another goal update in the same turn");
         }
         WorkflowStatus status = switch (decision.mode()) {
             case GUIDE_USER -> WorkflowStatus.USER_DECISION_REQUIRED;
+            case INFORM_USER -> session.getStatus();
             case SECURE_INPUT_REQUIRED -> WorkflowStatus.SECURE_INPUT_REQUIRED;
             case RISK_WARNING -> WorkflowStatus.RISK_WARNING;
             case FINAL_CONFIRMATION_REQUIRED -> WorkflowStatus.FINAL_CONFIRMATION_REQUIRED;
@@ -162,8 +175,10 @@ public final class ConversationAgentCoordinator {
                     sessionId, snapshot, candidate.targetElementId(), candidate.role(),
                     candidate.accessibleLabel(), candidate.guide());
         }
-        session.transitionTo(status);
-        sessions.save(session);
+        if (decision.mode() != ConversationInteractionMode.INFORM_USER) {
+            session.transitionTo(status);
+            sessions.save(session);
+        }
         if (decision.message() != null && !decision.message().isBlank()) {
             Instant now = Instant.now();
             String assistantMessageId = UUID.randomUUID().toString();
@@ -172,5 +187,55 @@ public final class ConversationAgentCoordinator {
             events.message(sessionId, assistantMessageId, message.sequence(), message.content(),
                     state.goal().revision(), status, decision.reasonCode(), now);
         }
+        if (decision.mode() == ConversationInteractionMode.AUTO_EXECUTE) {
+            var result = executeAutomaticAction(sessionId, state, decision);
+            if (result.status() == BrowserActionExecutionStatus.EXECUTED
+                    && domDecisionService != null) {
+                if (automaticActionCount >= MAX_AUTOMATIC_ACTIONS_PER_TURN - 1) {
+                    throw new IllegalStateException("Automatic Browser Action limit exceeded");
+                }
+                var next = domDecisionService.decideCurrent(
+                        sessionId,
+                        decision.requestId(),
+                        decision.requestMessageId(),
+                        state,
+                        "AUTO_ACTION_COMPLETED",
+                        null);
+                applyDomDecision(
+                        sessionId, state, session, next.decision(), next.snapshot(),
+                        automaticActionCount + 1);
+            }
+        }
+    }
+
+    private com.ddd.backend.automation.BrowserActionExecutionResult executeAutomaticAction(
+            String sessionId, ConversationState state,
+            ConversationAgentDecision decision) {
+        if (actionExecutionService == null) {
+            throw new IllegalStateException("AUTO_EXECUTE Browser Action service is not available");
+        }
+        var candidate = decision.actionCandidate();
+        if (candidate == null) {
+            throw new IllegalArgumentException("AUTO_EXECUTE requires an action candidate");
+        }
+        BrowserActionType actionType;
+        try {
+            actionType = BrowserActionType.valueOf(candidate.actionType());
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Unsupported AUTO_EXECUTE action type");
+        }
+        if (actionType != BrowserActionType.CLICK && actionType != BrowserActionType.TYPE) {
+            throw new IllegalArgumentException("AUTO_EXECUTE only supports CLICK or TYPE");
+        }
+        String value = null;
+        if (actionType == BrowserActionType.TYPE) {
+            var amount = state.goal().amount();
+            if (amount == null || amount.value() == null || amount.value().isBlank()) {
+                throw new IllegalStateException("AUTO_EXECUTE TYPE requires an authoritative goal value");
+            }
+            value = amount.value();
+        }
+        return actionExecutionService.executeAiElementAction(
+                sessionId, actionType, candidate.targetElementId(), value);
     }
 }

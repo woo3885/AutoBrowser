@@ -70,7 +70,7 @@ export function normalizeDuration(message: string): GoalDuration | null {
 function detectIntent(message: string): GoalIntent {
   if (/(?:변경|바꿔|고쳐)/u.test(message)) return "CHANGE";
   if (/(?:이체|송금)/u.test(message)) return "TRANSFER";
-  if (/(?:조회|알아보|확인)/u.test(message)) return "INQUIRY";
+  if (/(?:조회|알아보|확인|분석|현재\s*(?:사이트|화면|페이지))/u.test(message)) return "INQUIRY";
   if (/(?:예금|적금)/u.test(message)) return "DEPOSIT";
   return "UNKNOWN";
 }

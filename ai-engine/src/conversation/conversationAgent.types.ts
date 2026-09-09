@@ -74,6 +74,7 @@ export interface UserGoalPatch {
 export const AGENT_MODES = [
   "AUTO_EXECUTE",
   "GUIDE_USER",
+  "INFORM_USER",
   "ASK_USER",
   "SECURE_INPUT_REQUIRED",
   "RISK_WARNING",

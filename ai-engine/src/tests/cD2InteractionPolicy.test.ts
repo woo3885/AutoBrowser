@@ -5,7 +5,10 @@ import {
   decideConversationInteraction,
   validateConversationInteractionDecision,
 } from "../conversation/conversationInteraction.policy.js";
-import { ScriptedConversationModel } from "../conversation/scriptedConversation.model.js";
+import {
+  PageAwareConversationModel,
+  ScriptedConversationModel,
+} from "../conversation/scriptedConversation.model.js";
 import {
   C_D2_DEPOSIT_FIXTURES,
   conversationElement,
@@ -13,7 +16,7 @@ import {
   conversationSnapshot,
 } from "./fixtures/cD2Deposit.fixtures.js";
 
-test("C-D2-04 all nine interaction modes remain semantically distinct", async () => {
+test("C-D2-04 all deterministic workflow interaction modes remain semantically distinct", async () => {
   const decisions = await Promise.all(
     C_D2_DEPOSIT_FIXTURES.map((fixture) =>
       new ScriptedConversationModel().decide(fixture.request)),
@@ -97,4 +100,79 @@ test("C-D2-04 Backend-resolved confirmation cannot be proposed again", () => {
   assert.equal(decision.mode, "STOP");
   assert.equal(decision.reasonCode, "BLOCKED_TARGET");
   assert.equal(decision.actionCandidate, null);
+});
+
+test("C-D2-04 deposit inquiry automatically opens the unique safe home entry", async () => {
+  const snapshot = conversationSnapshot(
+    "snap-home",
+    [
+      conversationElement("el-deposit", "예금 가입 시작"),
+      conversationElement("el-transfer", "계좌이체 시작"),
+    ],
+    "https://demo.test/",
+  );
+  const request = conversationRequest(snapshot);
+  request.goal = {
+    ...request.goal,
+    intent: "INQUIRY",
+    normalizedRequest: "예금 상품 알아보기",
+    amount: null,
+    duration: null,
+  };
+
+  const decision = await new ScriptedConversationModel().decide(request);
+
+  assert.equal(decision.mode, "AUTO_EXECUTE");
+  assert.equal(decision.reasonCode, "DEPOSIT_HOME_ENTRY");
+  assert.equal(decision.actionCandidate?.actionType, "CLICK");
+  assert.equal(decision.actionCandidate?.targetElementId, "el-deposit");
+  assert.equal(decision.actionCandidate?.accessibleLabel, "예금 가입 시작");
+});
+
+test("current page analysis returns a non-terminal AI message from the sanitized snapshot", async () => {
+  const request = conversationRequest(conversationSnapshot(
+    "snap-analysis",
+    [conversationElement("el-deposit", "예금 가입 시작")],
+    "https://demo.test/",
+  ));
+  request.userMessage.content = "현재 사이트 분석해줘";
+  request.goal = { ...request.goal, intent: "INQUIRY", missingFields: [] };
+  const prompts: string[] = [];
+  const model = new PageAwareConversationModel(
+    new ScriptedConversationModel(),
+    async ({ prompt }) => {
+      prompts.push(prompt);
+      return "현재 데모뱅크 홈 화면이며 예금 가입 업무를 시작할 수 있습니다.";
+    },
+  );
+
+  const decision = await model.decide(request);
+
+  assert.equal(decision.mode, "INFORM_USER");
+  assert.equal(decision.reasonCode, "CURRENT_PAGE_ANALYSIS");
+  assert.equal(decision.sourceSnapshotId, "snap-analysis");
+  assert.equal(decision.actionCandidate, null);
+  assert.match(decision.message ?? "", /데모뱅크 홈 화면/u);
+  assert.doesNotMatch(prompts[0] ?? "", /el-deposit/u);
+  assert.equal(validateConversationInteractionDecision(request, decision).valid, true);
+});
+
+test("current page analysis falls back safely when the language model is unavailable", async () => {
+  const request = conversationRequest(conversationSnapshot(
+    "snap-analysis-fallback",
+    [conversationElement("el-deposit", "예금 가입 시작")],
+    "https://demo.test/",
+  ));
+  request.userMessage.content = "현재 화면 분석해줘";
+  request.goal = { ...request.goal, intent: "INQUIRY", missingFields: [] };
+  const model = new PageAwareConversationModel(
+    new ScriptedConversationModel(),
+    async () => { throw new Error("offline"); },
+  );
+
+  const decision = await model.decide(request);
+
+  assert.equal(decision.mode, "INFORM_USER");
+  assert.match(decision.message ?? "", /현재/u);
+  assert.equal(validateConversationInteractionDecision(request, decision).valid, true);
 });

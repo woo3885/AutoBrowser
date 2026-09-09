@@ -514,4 +514,34 @@ class ElementRegistryTest {
                 )
         ).isFalse();
     }
+
+    @Test
+    void cardButtonUsesTheSameHeadingFingerprintDuringResolution() {
+        manager.execute(
+                SESSION_ID,
+                Duration.ofSeconds(5),
+                page -> {
+                    page.setContent("""
+                            <article>
+                              <h2>12 month deposit</h2>
+                              <button id="select-product" aria-label="12 month deposit select">
+                                Select this product
+                              </button>
+                            </article>
+                            """);
+                    return null;
+                }
+        );
+
+        SanitizedDomSnapshot snapshot = snapshotService.createSnapshot(SESSION_ID);
+        String elementId = snapshot.elements().get(0).elementId();
+
+        String resolvedDomId = locatorResolver.withLocator(
+                SESSION_ID,
+                elementId,
+                locator -> locator.getAttribute("id")
+        );
+
+        assertThat(resolvedDomId).isEqualTo("select-product");
+    }
 }

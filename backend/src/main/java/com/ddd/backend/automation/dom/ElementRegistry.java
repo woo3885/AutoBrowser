@@ -324,9 +324,31 @@ public final class ElementRegistry {
                         locator
                 );
 
+        String elementText = locator.textContent();
+
+        /*
+         * InteractiveElementExtractor uses the nearest card heading as the
+         * semantic text for card buttons. Locator revalidation must apply the
+         * same rule, otherwise a freshly registered product option is rejected
+         * as stale before an Overlay can be created.
+         */
+        if ("button".equals(tag)) {
+            Object cardHeading = locator.evaluate(
+                    """
+                    element => {
+                      const container = element.closest('article');
+                      const heading = container?.querySelector('h1, h2, h3');
+                      return heading?.innerText?.trim() || null;
+                    }
+                    """);
+            if (cardHeading instanceof String heading && !heading.isBlank()) {
+                elementText = heading;
+            }
+        }
+
         String text =
                 sanitizer.sanitizeText(
-                        locator.textContent()
+                        elementText
                 );
 
         String ariaLabel =

@@ -2,6 +2,8 @@ package com.ddd.backend.automation.worker;
 
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.List;
@@ -17,6 +19,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public final class PlaywrightWorker implements AutoCloseable {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(PlaywrightWorker.class);
 
     private static final String FAILED_MESSAGE =
             "브라우저 작업 실행에 실패했습니다.";
@@ -130,6 +135,16 @@ public final class PlaywrightWorker implements AutoCloseable {
 
         } catch (Exception exception) {
             if (!timedOut.get()) {
+                StackTraceElement origin = exception.getStackTrace().length == 0
+                        ? null : exception.getStackTrace()[0];
+                log.warn(
+                        "Playwright task failed. sessionId={}, exceptionType={}, origin={}",
+                        task.getSessionId(),
+                        exception.getClass().getSimpleName(),
+                        origin == null ? "unknown"
+                                : origin.getClassName() + "#" + origin.getMethodName()
+                );
+
                 result.complete(
                         BrowserTaskResult.failed(
                                 task,

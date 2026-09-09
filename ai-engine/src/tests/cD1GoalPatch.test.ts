@@ -43,6 +43,7 @@ test("C-D1-02 initial request extraction", () => {
   for (const [message, intent] of [
     ["계좌로 이체해줘", "TRANSFER"],
     ["예금 상품 알아보기", "INQUIRY"],
+    ["현재 사이트 분석해줘", "INQUIRY"],
     ["기간을 변경해줘", "CHANGE"],
     ["도와줘", "UNKNOWN"],
   ] as const) {

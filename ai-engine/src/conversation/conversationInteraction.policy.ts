@@ -34,6 +34,16 @@ import { validateAgentDecision } from "./conversationAgent.validator.js";
 const SNAPSHOT_MODES = new Set<AgentDecision["mode"]>([
   "AUTO_EXECUTE",
   "GUIDE_USER",
+  "INFORM_USER",
+  "SECURE_INPUT_REQUIRED",
+  "RISK_WARNING",
+  "FINAL_CONFIRMATION_REQUIRED",
+  "COMPLETE",
+]);
+
+const POLICY_BOUND_SNAPSHOT_MODES = new Set<AgentDecision["mode"]>([
+  "AUTO_EXECUTE",
+  "GUIDE_USER",
   "SECURE_INPUT_REQUIRED",
   "RISK_WARNING",
   "FINAL_CONFIRMATION_REQUIRED",
@@ -291,6 +301,30 @@ function safeNormalAction(
   return safe.length === 1 ? safe[0] ?? null : null;
 }
 
+function homeDepositEntryTarget(
+  input: ConversationAgentRequest,
+): BackendSanitizedDomElement | null {
+  if (!input.snapshot || !["DEPOSIT", "INQUIRY"].includes(input.goal.intent)) {
+    return null;
+  }
+  let pathname: string;
+  try {
+    pathname = new URL(input.snapshot.sanitizedDomSnapshot.page.url).pathname;
+  } catch {
+    return null;
+  }
+  if (pathname.replace(/\/+$/u, "") !== "") return null;
+
+  const matches = input.snapshot.sanitizedDomSnapshot.elements.filter((element) => {
+    const role = element.role?.toLowerCase();
+    return element.visible && element.enabled &&
+      element.securityPolicy === "NORMAL" &&
+      (element.tag.toLowerCase() === "button" || role === "button") &&
+      textOf(element).includes("예금 가입 시작");
+  });
+  return matches.length === 1 ? matches[0] ?? null : null;
+}
+
 function containsUnverifiedFinalAction(input: ConversationAgentRequest): boolean {
   return input.snapshot?.sanitizedDomSnapshot.elements.some((element) =>
     element.visible && detectFinalAction({
@@ -432,6 +466,17 @@ export function decideConversationInteraction(
     };
   }
 
+  const homeDepositTarget = homeDepositEntryTarget(input);
+  if (homeDepositTarget) {
+    return withSnapshotMode(
+      input,
+      "AUTO_EXECUTE",
+      "예금 상품 화면으로 이동하고 있습니다.",
+      "DEPOSIT_HOME_ENTRY",
+      { actionType: "CLICK", target: homeDepositTarget },
+    );
+  }
+
   if (hasVisiblePolicy(input, "BLOCKED") || containsUnverifiedFinalAction(input)) {
     return { ...base, reasonCode: "BLOCKED_TARGET" };
   }
@@ -513,11 +558,15 @@ export function validateConversationInteractionDecision(
       if (!target.visible || !target.enabled) {
         errors.push("/actionCandidate target must be visible and enabled");
       }
-      const requiredPolicy = decision.mode === "GUIDE_USER"
-        ? "USER_DECISION"
-        : "NORMAL";
-      if (target.securityPolicy !== requiredPolicy) {
-        errors.push(`/actionCandidate target must have ${requiredPolicy} security policy`);
+      const policyAllowed = decision.mode === "GUIDE_USER"
+        ? ["NORMAL", "USER_DECISION"].includes(target.securityPolicy)
+        : target.securityPolicy === "NORMAL";
+      if (!policyAllowed) {
+        errors.push(
+          decision.mode === "GUIDE_USER"
+            ? "/actionCandidate target must have NORMAL or USER_DECISION security policy"
+            : "/actionCandidate target must have NORMAL security policy",
+        );
       }
       if (!target.role || candidate.role !== target.role.toLowerCase()) {
         errors.push("/actionCandidate/role must match the sanitized target role");
@@ -572,7 +621,20 @@ export function validateConversationInteractionDecision(
     errors.push("/reasonCode must have terminal or fail-closed STOP meaning");
   }
 
-  if (SNAPSHOT_MODES.has(decision.mode)) {
+  if (decision.mode === "INFORM_USER") {
+    const protectedGoal = input.goal.safety.secureInputActive ||
+      input.goal.safety.riskState !== "NONE" ||
+      input.goal.safety.confirmationState !== "NONE";
+    const protectedPage = input.snapshot?.sanitizedDomSnapshot.elements.some(
+      (element) => element.visible &&
+        ["SECURE_INPUT", "FINAL_CONFIRMATION", "BLOCKED"].includes(element.securityPolicy),
+    ) ?? false;
+    if (protectedGoal || protectedPage) {
+      errors.push("/mode INFORM_USER is not allowed in a protected state");
+    }
+  }
+
+  if (POLICY_BOUND_SNAPSHOT_MODES.has(decision.mode)) {
     const expected = decideConversationInteraction(input);
     if (expected.mode !== decision.mode) {
       errors.push(`/mode conflicts with current protection policy; expected ${expected.mode}`);

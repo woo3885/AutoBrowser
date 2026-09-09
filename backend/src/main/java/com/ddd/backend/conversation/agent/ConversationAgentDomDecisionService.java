@@ -39,13 +39,26 @@ public class ConversationAgentDomDecisionService {
             String content,
             String answerToQuestionId
     ) {
+        return decideCurrent(
+                sessionId, acceptance.requestId(), acceptance.messageId(), state,
+                content, answerToQuestionId);
+    }
+
+    public DomDecisionResult decideCurrent(
+            String sessionId,
+            String requestId,
+            String requestMessageId,
+            ConversationState state,
+            String content,
+            String answerToQuestionId
+    ) {
         DemoAgentBridgeBinding bridge = bridges.find(sessionId)
                 .orElseThrow(() -> new IllegalStateException("Demo Agent bridge binding이 없습니다."));
         SanitizedDomSnapshot snapshot = snapshots.createSnapshot(sessionId);
         ConversationAgentRequest request = new ConversationAgentRequest(
                 sessionId,
-                acceptance.requestId(),
-                acceptance.messageId(),
+                requestId,
+                requestMessageId,
                 state.sequence(),
                 state.goal(),
                 new ConversationAgentRequest.UserMessage(content, answerToQuestionId),
