@@ -9,6 +9,7 @@ import com.ddd.backend.conversation.MessageAcceptance;
 import com.ddd.backend.conversation.SessionMessageMailbox;
 import com.ddd.backend.conversation.event.ConversationEventPublisher;
 import com.ddd.backend.conversation.event.ConversationEventStore;
+import com.ddd.backend.conversation.event.AiMessageEvent;
 import com.ddd.backend.domain.session.AutomationSession;
 import com.ddd.backend.domain.session.WorkflowStatus;
 import com.ddd.backend.infrastructure.session.InMemoryAutomationSessionRepository;
@@ -64,6 +65,10 @@ class ConversationAgentCoordinatorActionTest {
         assertThat(harness.conversations().snapshot(harness.session().getSessionId())
                 .recentSafeMessages()).extracting("content")
                 .contains("현재 화면에서는 예금과 이체 업무를 시작할 수 있습니다.");
+        assertThat(harness.conversations().eventStore().events(harness.session().getSessionId()))
+                .singleElement()
+                .isInstanceOfSatisfying(AiMessageEvent.class,
+                        event -> assertThat(event.errorCode()).isNull());
     }
 
     @Test

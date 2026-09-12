@@ -194,7 +194,7 @@ public final class ConversationAgentCoordinator {
             ConversationMessage message = state.appendAiMessage(assistantMessageId,
                     decision.message(), state.goal().revision(), now);
             events.message(sessionId, assistantMessageId, message.sequence(), message.content(),
-                    state.goal().revision(), status, decision.reasonCode(), now);
+                    state.goal().revision(), status, null, now);
         }
         if (decision.mode() == ConversationInteractionMode.AUTO_EXECUTE) {
             var result = executeAutomaticAction(sessionId, state, decision);
