@@ -13,6 +13,7 @@ export interface InitialConversationRequest {
   content: string;
   siteId: string;
   initialPath: string;
+  targetUrl?: string;
   clientOccurredAt: string;
 }
 

@@ -20,7 +20,10 @@ public record CreateSessionRequest(
 
         String content,
 
-        Instant clientOccurredAt
+        Instant clientOccurredAt,
+
+        @jakarta.validation.constraints.Size(max = 2048, message = "targetUrl must be at most 2048 characters")
+        String targetUrl
 
 ) {
 
@@ -35,11 +38,11 @@ public record CreateSessionRequest(
                 String userRequest
         ) {
                 this(userRequest, "demo-bank", "/transfer/accounts",
-                        null, null, null, null);
+                        null, null, null, null, null);
         }
 
         public CreateSessionRequest(String userRequest, String siteId, String initialPath) {
-                this(userRequest, siteId, initialPath, null, null, null, null);
+                this(userRequest, siteId, initialPath, null, null, null, null, null);
         }
 
         public boolean usesConversationContract() {
@@ -53,6 +56,9 @@ public record CreateSessionRequest(
         @jakarta.validation.constraints.AssertTrue(
                 message = "사용자 요청은 비어 있을 수 없습니다.")
         public boolean isMessageContractValid() {
+                if (targetUrl != null && !targetUrl.isBlank() && !usesConversationContract()) {
+                        return false;
+                }
                 if (!usesConversationContract()) {
                         return userRequest != null && !userRequest.isBlank();
                 }

@@ -202,7 +202,7 @@ export function useAgentConversation(dependencies: AgentConversationDependencies
     };
   }, [apply, dependencies.bridgeBinding, recoverBridge, startTransport]);
 
-  const submit = useCallback(async (content: string) => {
+  const submit = useCallback(async (content: string, targetUrl?: string) => {
     if (submitLock.current ||
         !getConversationProtectionPolicy(stateRef.current, pageProtection).canSubmitMessage) return;
     submitLock.current = true;
@@ -236,7 +236,7 @@ export function useAgentConversation(dependencies: AgentConversationDependencies
           }, controller.signal)
         : await httpClient.createSession({
             requestId, messageId, content, siteId: automationSiteId,
-            initialPath: automationInitialPath, clientOccurredAt: message.occurredAt
+            initialPath: automationInitialPath, targetUrl, clientOccurredAt: message.occurredAt
           }, controller.signal);
       if (!current.sessionId) {
         apply({ type: 'SESSION_ASSIGNED', sessionId: ack.sessionId });

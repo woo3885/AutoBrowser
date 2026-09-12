@@ -537,4 +537,46 @@ class AutomationSessionControllerTest {
                         )
                 );
     }
+
+    @Test
+    void conversationSessionCanStartAtAValidatedPublicUrl() throws Exception {
+        AutomationSession session = AutomationSession.create("현재 페이지 설명");
+        when(conversationService.validateContent("현재 페이지 설명"))
+                .thenReturn("현재 페이지 설명");
+        when(sessionService.createPublicConversationSession(
+                "현재 페이지 설명", "https://example.com/"))
+                .thenReturn(session);
+        when(conversationService.acceptInitial(
+                org.mockito.ArgumentMatchers.eq(session.getSessionId()),
+                org.mockito.ArgumentMatchers.eq("req-public-1"),
+                org.mockito.ArgumentMatchers.eq("msg-public-1"),
+                org.mockito.ArgumentMatchers.eq("현재 페이지 설명"),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new MessageAcceptance(
+                        session.getSessionId(), "req-public-1", "msg-public-1", 1,
+                        MessageQueueStatus.ACTIVE, java.time.Instant.now(), false));
+
+        mockMvc.perform(post("/api/v1/sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestId":"req-public-1",
+                                  "messageId":"msg-public-1",
+                                  "content":"현재 페이지 설명",
+                                  "siteId":"browser-site",
+                                  "initialPath":"/",
+                                  "targetUrl":"https://example.com/",
+                                  "clientOccurredAt":"2026-09-12T12:00:00Z"
+                                }
+                                """))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.data.sessionId").value(session.getSessionId()));
+
+        verify(sessionService).createPublicConversationSession(
+                "현재 페이지 설명", "https://example.com/");
+        verify(sessionService, never()).createConversationSession(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+    }
 }

@@ -11,6 +11,7 @@ import com.ddd.backend.security.capture.BrowserFrameCaptureService;
 import com.ddd.backend.security.capture.FrameCaptureAttempt;
 import com.ddd.backend.security.navigation.DemoNavigationPolicy;
 import com.ddd.backend.security.navigation.DemoNavigationTarget;
+import com.ddd.backend.security.navigation.PublicUrlNavigationPolicy;
 import com.ddd.backend.service.action.PublicBrowserActionSessionState;
 import com.ddd.backend.service.decision.UserDecisionSessionState;
 import com.ddd.backend.websocket.frame.BrowserFrameWebSocketHandler;
@@ -75,6 +76,12 @@ public class AutomationSessionService {
     private OverlayTargetStore overlayTargets;
     private ConversationProtectedGateRegistry conversationProtectedGates;
     private ConversationObservationResumeAdapter conversationObservationResumeAdapter;
+    private PublicUrlNavigationPolicy publicUrlNavigationPolicy;
+
+    @Autowired
+    void setPublicUrlNavigationPolicy(PublicUrlNavigationPolicy publicUrlNavigationPolicy) {
+        this.publicUrlNavigationPolicy = publicUrlNavigationPolicy;
+    }
 
     @Autowired
     void setSecureInputRegistry(SecureInputRegistry secureInputRegistry) {
@@ -293,6 +300,34 @@ public class AutomationSessionService {
             if (demoAgentBridgeService != null) {
                 demoAgentBridgeService.bootstrap(sessionId);
             }
+            return sessionRepository.save(session);
+        } catch (RuntimeException exception) {
+            cleanupBrowserResources(sessionId);
+            throw exception;
+        }
+    }
+
+    public AutomationSession createPublicConversationSession(String userRequest, String targetUrl) {
+        if (publicUrlNavigationPolicy == null) {
+            throw new IllegalStateException("Public URL navigation is unavailable");
+        }
+        java.net.URI target = publicUrlNavigationPolicy.resolve(targetUrl);
+        AutomationSession session = AutomationSession.create(userRequest);
+        String sessionId = session.getSessionId();
+        browserSessionManager.createSession(sessionId);
+        try {
+            String finalUrl = browserSessionManager.navigatePublic(
+                    sessionId, target, publicUrlNavigationPolicy);
+            session.updateCurrentUrl(finalUrl);
+
+            FrameCaptureAttempt captureAttempt = browserFrameCaptureService.capture(sessionId);
+            if (!captureAttempt.captured() || captureAttempt.frame() == null) {
+                throw new IllegalStateException("Initial browser frame could not be created");
+            }
+            browserFrameStore.publish(sessionId, captureAttempt.frame());
+            if (frameWebSocketHandler != null) frameWebSocketHandler.sendLatest(sessionId);
+            if (snapshotService != null) snapshotService.createSnapshot(sessionId);
+            if (demoAgentBridgeService != null) demoAgentBridgeService.bootstrapRemote(sessionId);
             return sessionRepository.save(session);
         } catch (RuntimeException exception) {
             cleanupBrowserResources(sessionId);

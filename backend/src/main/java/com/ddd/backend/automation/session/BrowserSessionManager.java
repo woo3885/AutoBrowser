@@ -9,6 +9,7 @@ import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
+import com.microsoft.playwright.options.ServiceWorkerPolicy;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.net.URI;
+import com.ddd.backend.security.navigation.PublicUrlNavigationPolicy;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
@@ -280,6 +282,48 @@ public class BrowserSessionManager implements AutoCloseable {
         );
     }
 
+    /** Installs an SSRF guard on the whole context before opening a user supplied URL. */
+    public synchronized String navigatePublic(
+            String sessionId,
+            URI targetUri,
+            PublicUrlNavigationPolicy navigationPolicy
+    ) {
+        validateSessionId(sessionId);
+        Objects.requireNonNull(targetUri, "targetUri is required");
+        Objects.requireNonNull(navigationPolicy, "navigationPolicy is required");
+
+        return executeWorkerTask(sessionId, NAVIGATION_TIMEOUT, () -> {
+            BrowserSession session = getRequiredSessionOnWorker(sessionId);
+            session.browserContext().route("**/*", route -> {
+                try {
+                    navigationPolicy.validateRequestUrl(route.request().url());
+                    route.resume();
+                } catch (RuntimeException blocked) {
+                    log.warn("Blocked unsafe browser request. sessionId={}", sessionId);
+                    route.abort();
+                }
+            });
+            session.browserContext().routeWebSocket("**/*", webSocket -> {
+                try {
+                    String socketUrl = webSocket.url();
+                    if (!socketUrl.startsWith("wss://")) {
+                        throw new IllegalArgumentException("Only public WSS connections are allowed");
+                    }
+                    navigationPolicy.validateRequestUrl("https://" + socketUrl.substring(6));
+                    webSocket.connectToServer();
+                } catch (RuntimeException blocked) {
+                    log.warn("Blocked unsafe browser WebSocket. sessionId={}", sessionId);
+                    webSocket.close();
+                }
+            });
+            Page page = session.currentPage();
+            page.navigate(targetUri.toString(), new Page.NavigateOptions()
+                    .setTimeout(PLAYWRIGHT_NAVIGATION_TIMEOUT_MILLIS));
+            navigationPolicy.validateRequestUrl(page.url());
+            return page.url();
+        });
+    }
+
     /*
      * Browser 작업 실행.
      *
@@ -407,6 +451,7 @@ public class BrowserSessionManager implements AutoCloseable {
                                 .setDeviceScaleFactor(
                                         DEVICE_SCALE_FACTOR
                                 )
+                                .setServiceWorkers(ServiceWorkerPolicy.BLOCK)
                 );
 
         try {

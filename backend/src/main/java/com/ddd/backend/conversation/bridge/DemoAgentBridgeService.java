@@ -52,6 +52,27 @@ public final class DemoAgentBridgeService {
         return binding;
     }
 
+    /**
+     * Creates an internal identity for a remote Viewer session. Unlike the demo bridge this
+     * never injects credentials into the visited third-party page.
+     */
+    public DemoAgentBridgeBinding bootstrapRemote(String sessionId) {
+        String currentUrl = browserSessions.currentUrl(sessionId);
+        String origin = origin(currentUrl);
+        Duration ttl = properties.getTtl();
+        if (ttl == null || ttl.isZero() || ttl.isNegative()) {
+            throw new IllegalStateException("Demo Agent bridge TTL is invalid");
+        }
+        DemoAgentBridgeBinding binding = new DemoAgentBridgeBinding(
+                sessionId,
+                UUID.randomUUID().toString(),
+                "remote-page-" + UUID.randomUUID(),
+                origin,
+                Instant.now().plus(ttl));
+        registry.put(binding);
+        return binding;
+    }
+
     static String bootstrapScript(DemoAgentBridgeBinding binding) {
         return """
                 (() => {
