@@ -24,6 +24,12 @@ DDD_DEMO_AGENT_BRIDGE_ALLOWED_ORIGINS=https://docs.example.com
 AI_ENGINE_MODEL_TIMEOUT_MS=12000
 ```
 
+Backend에는 AI Engine의 private Railway URL을 사용한다.
+
+```text
+AI_ENGINE_CONVERSATION_ENDPOINT=http://ai-engine.railway.internal:<PORT>/api/ai/conversation/decision
+```
+
 Demo 채팅을 외부 사이트 세션의 컨트롤러로 사용할 때는 다음 Build Variable도
 설정한다.
 

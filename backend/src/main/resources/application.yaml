@@ -83,5 +83,6 @@ ddd:
     engine:
       enabled: ${DDD_AI_ENGINE_ENABLED:true}
       endpoint: ${AI_ENGINE_ENDPOINT:http://127.0.0.1:3001/api/ai/action}
+      conversation-endpoint: ${AI_ENGINE_CONVERSATION_ENDPOINT:http://127.0.0.1:3001/api/ai/conversation/decision}
       connect-timeout: ${AI_ENGINE_CONNECT_TIMEOUT:3s}
       request-timeout: ${AI_ENGINE_REQUEST_TIMEOUT:15s}
