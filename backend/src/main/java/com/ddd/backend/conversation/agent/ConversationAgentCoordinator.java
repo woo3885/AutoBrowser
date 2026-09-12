@@ -71,10 +71,19 @@ public final class ConversationAgentCoordinator {
             String content, String answerToQuestionId) {
         if (acceptance.duplicate() || acceptance.queueStatus() != MessageQueueStatus.ACTIVE) return null;
         ConversationState state = conversations.state(sessionId);
-        ConversationAgentRequest request = new ConversationAgentRequest(sessionId, acceptance.requestId(),
-                acceptance.messageId(), state.sequence(), state.goal(),
-                new ConversationAgentRequest.UserMessage(content, answerToQuestionId), null);
-        ConversationAgentDecision decision = validator.validate(request, client.decide(request));
+        SanitizedDomSnapshot decisionSnapshot = null;
+        ConversationAgentDecision decision;
+        if (domDecisionService != null && domDecisionService.canContinue(sessionId)) {
+            var result = domDecisionService.decideOnce(
+                    sessionId, acceptance, state, content, answerToQuestionId);
+            decision = result.decision();
+            decisionSnapshot = result.snapshot();
+        } else {
+            ConversationAgentRequest request = new ConversationAgentRequest(
+                    sessionId, acceptance.requestId(), acceptance.messageId(), state.sequence(), state.goal(),
+                    new ConversationAgentRequest.UserMessage(content, answerToQuestionId), null);
+            decision = validator.validate(request, client.decide(request));
+        }
         synchronized (state) {
             if (!mailbox.isActive(sessionId, acceptance.messageId()))
                 throw new IllegalStateException("Stale AI decision for inactive message");
@@ -116,7 +125,7 @@ public final class ConversationAgentCoordinator {
                     applyDomDecision(sessionId, state, session, decision, result.snapshot(), 0);
                 }
             } else {
-                applyDomDecision(sessionId, state, session, decision, null, 0);
+                applyDomDecision(sessionId, state, session, decision, decisionSnapshot, 0);
             }
             mailbox.completeActive(sessionId, acceptance.messageId());
         }

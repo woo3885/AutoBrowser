@@ -15,6 +15,7 @@ import {
 } from "./conversationInteraction.policy.js";
 import {
   SAFE_INTERNAL_MESSAGE,
+  sanitizeDecisionLabel,
   sanitizeInternalMessage,
 } from "../messages/messageSafety.js";
 
@@ -207,6 +208,9 @@ function toDecision(
   }
 
   if (result.patch.intent === "UNKNOWN") {
+    if (input.snapshot !== null) {
+      return describeAvailablePageActions(input);
+    }
     return base;
   }
 
@@ -220,6 +224,40 @@ function toDecision(
     reasonCode: "GOAL_UPDATED",
     nextCondition: "LATEST_DOM_DECISION",
     goalPatch: result.patch,
+  };
+}
+
+function describeAvailablePageActions(
+  input: ConversationAgentRequest,
+): AgentDecision {
+  const snapshot = input.snapshot!;
+  const actionableRoles = new Set([
+    "button", "link", "textbox", "checkbox", "radio", "combobox",
+  ]);
+  const labels = snapshot.sanitizedDomSnapshot.elements
+    .filter((element) =>
+      element.visible &&
+      element.enabled &&
+      element.securityPolicy === "NORMAL" &&
+      actionableRoles.has(element.role?.toLowerCase() ?? "")
+    )
+    .map((element) =>
+      element.ariaLabel ?? element.text ?? element.placeholder
+    )
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map(sanitizeDecisionLabel)
+    .filter((label, index, all) => all.indexOf(label) === index)
+    .slice(0, 4);
+  const message = labels.length > 0
+    ? `질문을 이해하지 못했습니다. 현재 화면에서는 ${labels.join(", ")} 항목을 이용할 수 있습니다. 원하는 작업을 다시 말씀해 주세요.`
+    : "질문을 이해하지 못했습니다. 현재 화면에서 원하는 업무를 조금 더 구체적으로 말씀해 주세요.";
+
+  return {
+    ...baseDecision(input),
+    mode: "INFORM_USER",
+    message: sanitizeInternalMessage(message),
+    reasonCode: "AVAILABLE_PAGE_ACTIONS",
+    sourceSnapshotId: snapshot.sourceSnapshotId,
   };
 }
 

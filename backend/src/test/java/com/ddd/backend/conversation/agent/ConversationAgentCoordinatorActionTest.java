@@ -5,6 +5,7 @@ import com.ddd.backend.automation.BrowserActionType;
 import com.ddd.backend.conversation.ConversationMessagePolicy;
 import com.ddd.backend.conversation.ConversationService;
 import com.ddd.backend.conversation.ConversationStateStore;
+import com.ddd.backend.conversation.MessageAcceptance;
 import com.ddd.backend.conversation.SessionMessageMailbox;
 import com.ddd.backend.conversation.event.ConversationEventPublisher;
 import com.ddd.backend.conversation.event.ConversationEventStore;
@@ -19,6 +20,9 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,22 +66,54 @@ class ConversationAgentCoordinatorActionTest {
                 .contains("현재 화면에서는 예금과 이체 업무를 시작할 수 있습니다.");
     }
 
+    @Test
+    void initialMessageUsesTheCurrentDomDecisionWhenTheBridgeIsAvailable() {
+        var harness = harness();
+        var domDecisions = mock(ConversationAgentDomDecisionService.class);
+        when(domDecisions.canContinue(harness.session().getSessionId())).thenReturn(true);
+        var decision = decision(harness, ConversationInteractionMode.INFORM_USER,
+                "질문을 이해하지 못했습니다. 현재 화면에서는 예금 상품을 확인할 수 있습니다.", null);
+        when(domDecisions.decideOnce(
+                eq(harness.session().getSessionId()),
+                eq(harness.acceptance()),
+                any(),
+                eq("알 수 없는 질문"),
+                isNull()
+        )).thenReturn(new ConversationAgentDomDecisionService.DomDecisionResult(decision, null));
+        harness.coordinator().setDomDecisionService(domDecisions);
+
+        ConversationAgentDecision result = harness.coordinator().process(
+                harness.session().getSessionId(), harness.acceptance(), "알 수 없는 질문", null);
+
+        assertThat(result.mode()).isEqualTo(ConversationInteractionMode.INFORM_USER);
+        assertThat(harness.session().getStatus()).isEqualTo(WorkflowStatus.SESSION_CREATED);
+        assertThat(harness.conversations().snapshot(harness.session().getSessionId())
+                .recentSafeMessages()).extracting("content")
+                .contains("질문을 이해하지 못했습니다. 현재 화면에서는 예금 상품을 확인할 수 있습니다.");
+        verify(domDecisions).decideOnce(
+                eq(harness.session().getSessionId()),
+                eq(harness.acceptance()),
+                any(),
+                eq("알 수 없는 질문"),
+                isNull());
+    }
+
     private Harness harness() {
         var sessions = new InMemoryAutomationSessionRepository();
-        var session = sessions.save(AutomationSession.create("현재 사이트 분석해줘"));
+        var session = sessions.save(AutomationSession.create("알 수 없는 질문"));
         var states = new ConversationStateStore(Duration.ofMinutes(30));
         var mailbox = new SessionMessageMailbox();
         var events = new ConversationEventStore();
         var conversations = new ConversationService(
                 sessions, states, mailbox, new ConversationMessagePolicy(), events);
-        conversations.acceptInitial(session.getSessionId(),
-                "request-1", "message-1", "현재 사이트 분석해줘", null);
+        MessageAcceptance acceptance = conversations.acceptInitial(session.getSessionId(),
+                "request-1", "message-1", "알 수 없는 질문", null);
         var publisher = new ConversationEventPublisher(
                 events, mock(SimpMessagingTemplate.class));
         var coordinator = new ConversationAgentCoordinator(
                 conversations, mailbox, sessions, request -> null,
                 new ConversationAgentContractValidator(new ConversationMessagePolicy()), publisher);
-        return new Harness(session, conversations, coordinator);
+        return new Harness(session, conversations, coordinator, acceptance);
     }
 
     private ConversationAgentDecision decision(
@@ -96,6 +132,7 @@ class ConversationAgentCoordinatorActionTest {
     private record Harness(
             AutomationSession session,
             ConversationService conversations,
-            ConversationAgentCoordinator coordinator
+            ConversationAgentCoordinator coordinator,
+            MessageAcceptance acceptance
     ) { }
 }

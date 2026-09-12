@@ -6,6 +6,7 @@ import { validateAgentDecision } from "../conversation/conversationAgent.validat
 import {
   ScriptedConversationModel,
 } from "../conversation/scriptedConversation.model.js";
+import { validateConversationInteractionDecision } from "../conversation/conversationInteraction.policy.js";
 
 function request(content: string): ConversationAgentRequest {
   return {
@@ -45,6 +46,66 @@ test("C-D1-03 unknown input safely stops without a DOM action", async () => {
   assert.equal(decision.actionCandidate, null);
   assert.equal(decision.sourceSnapshotId, null);
   assert.equal(validateAgentDecision(decision).valid, true);
+});
+
+test("unknown input describes safe actions from the current page without terminating", async () => {
+  const input = request("무슨 말인지 모르겠어");
+  input.snapshot = {
+    sourceSnapshotId: "snapshot-current-page",
+    pageIdentity: "page-current",
+    sanitizedDomSnapshot: {
+      schemaVersion: "1.0",
+      snapshotId: "snapshot-current-page",
+      page: {
+        url: "https://demo.test/deposit/products",
+        title: "예금 상품",
+        productId: null,
+        productName: null,
+        productPeriod: null,
+      },
+      elements: [
+        {
+          elementId: "el-product",
+          tag: "button",
+          role: "button",
+          text: "정기예금 자세히 보기",
+          ariaLabel: "정기예금 자세히 보기",
+          placeholder: null,
+          inputType: null,
+          visible: true,
+          enabled: true,
+          checked: null,
+          boundingBox: null,
+          securityPolicy: "NORMAL",
+        },
+        {
+          elementId: "el-password",
+          tag: "input",
+          role: "textbox",
+          text: null,
+          ariaLabel: "비밀번호",
+          placeholder: "비밀번호",
+          inputType: "password",
+          visible: false,
+          enabled: true,
+          checked: null,
+          boundingBox: null,
+          securityPolicy: "SECURE_INPUT",
+        },
+      ],
+    },
+  };
+
+  const decision = await new ScriptedConversationModel().decide(input);
+
+  assert.equal(decision.mode, "INFORM_USER");
+  assert.equal(decision.reasonCode, "AVAILABLE_PAGE_ACTIONS");
+  assert.equal(decision.sourceSnapshotId, "snapshot-current-page");
+  assert.match(decision.message ?? "", /정기예금 자세히 보기/u);
+  assert.doesNotMatch(decision.message ?? "", /비밀번호/u);
+  assert.equal(decision.actionCandidate, null);
+  assert.equal(validateAgentDecision(decision).valid, true);
+  assert.equal(validateConversationInteractionDecision(input, decision).valid, true);
 });
 
 test("C-D1-03 pending duration proposes a deterministic goal patch", async () => {
