@@ -88,6 +88,9 @@ function normalizeModelDecision(
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
   const raw = value as Record<string, unknown>;
   const mode = typeof raw.mode === "string" ? raw.mode : raw.mode;
+  const normalizedQuestion = mode === "ASK_USER"
+    ? normalizeQuestion(raw.question)
+    : null;
   const normalized: Record<string, unknown> = {
     ...raw,
     requestId: input.requestId,
@@ -106,9 +109,9 @@ function normalizeModelDecision(
       ? input.snapshot?.sourceSnapshotId ?? null
       : null,
     goalPatch: mode === "ASK_USER" || mode === "GOAL_PATCH_PROPOSED"
-      ? normalizeGoalPatch(input, raw.goalPatch, raw.question)
+      ? normalizeGoalPatch(input, raw.goalPatch, normalizedQuestion)
       : null,
-    question: mode === "ASK_USER" ? raw.question ?? null : null,
+    question: normalizedQuestion,
     actionCandidate: null,
   };
 
@@ -138,6 +141,17 @@ function normalizeModelDecision(
     };
   }
   return normalized;
+}
+
+function normalizeQuestion(value: unknown): { fieldKey: string } | null {
+  if (typeof value === "string" && value.trim()) {
+    return { fieldKey: value.trim() };
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const fieldKey = (value as Record<string, unknown>).fieldKey;
+  return typeof fieldKey === "string" && fieldKey.trim()
+    ? { fieldKey: fieldKey.trim() }
+    : null;
 }
 
 function normalizeGoalPatch(

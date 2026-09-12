@@ -285,3 +285,33 @@ test("model action metadata is rebuilt from the authoritative current DOM", asyn
     target!.role);
   assert.equal(actual.actionCandidate?.guide, actual.message);
 });
+
+test("ASK_USER question keeps only the contract fieldKey", async () => {
+  const input = request("03");
+  input.goal.missingFields = ["searchTerm"];
+  const decision: AgentDecision = {
+    requestId: input.requestId,
+    requestMessageId: input.requestMessageId,
+    goalId: input.goal.goalId,
+    baseGoalRevision: input.goal.revision,
+    mode: "ASK_USER",
+    message: "어떤 검색어를 입력할까요?",
+    confidence: 0.8,
+    reasonCode: "MODEL_NEEDS_INFORMATION",
+    nextCondition: null,
+    sourceSnapshotId: null,
+    goalPatch: {
+      basedOnRevision: input.goal.revision,
+      missingFields: ["searchTerm"],
+      pendingQuestionFieldKey: "searchTerm",
+    },
+    question: { fieldKey: "searchTerm" },
+    actionCandidate: null,
+  };
+  const actual = await adapter({
+    ...decision,
+    question: { fieldKey: "searchTerm", text: "extra", options: [] },
+  }).decide(input);
+
+  assert.deepEqual(actual.question, { fieldKey: "searchTerm" });
+});

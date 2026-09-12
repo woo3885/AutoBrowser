@@ -101,6 +101,7 @@ Rules:
 - For TYPE, actionCandidate.inputValue must contain the non-sensitive text to enter. Never type passwords, OTPs, card data, authentication codes, or other credentials.
 - Use GUIDE_USER with WAIT_FOR_USER when the user must choose, review consequential information, grant permission, solve a challenge, or perform a protected action.
 - Use ASK_USER only when required information cannot be inferred. Provide a short fieldKey and a goalPatch with basedOnRevision and missingFields.
+- For ASK_USER, question must be exactly {"fieldKey":"short-name"}; never add text, options, reason, or other question properties.
 - Use INFORM_USER to explain the page or when no safe action should be taken yet.
 - Use COMPLETE only when the current page clearly proves the requested outcome is complete.
 - Respect SECURE_INPUT, USER_DECISION, FINAL_CONFIRMATION, and BLOCKED policies. Never bypass them.
