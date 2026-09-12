@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright/java:v1.61.0-noble AS build
+FROM eclipse-temurin:21-jdk-noble AS build
 
 WORKDIR /workspace
 
