@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -87,6 +89,30 @@ class DemoNavigationPolicyTest {
                 target.targetUri().getHost()
         ).isEqualTo(
                 "localhost"
+        );
+    }
+
+    @Test
+    void configuredRailwayHostIsAllowed() {
+        properties.setBaseUrl(
+                "https://demo-production-3d87.up.railway.app"
+        );
+        properties.setAllowedHosts(
+                Set.of(
+                        "demo-production-3d87.up.railway.app"
+                )
+        );
+
+        DemoNavigationTarget target =
+                policy.resolve(
+                        "demo-bank",
+                        "/deposit/products"
+                );
+
+        assertThat(
+                target.targetUri().toString()
+        ).isEqualTo(
+                "https://demo-production-3d87.up.railway.app/deposit/products"
         );
     }
 

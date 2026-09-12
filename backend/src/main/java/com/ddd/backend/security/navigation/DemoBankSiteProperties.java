@@ -3,6 +3,8 @@ package com.ddd.backend.security.navigation;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
+
 @Component
 @ConfigurationProperties(prefix = "ddd.demo-bank")
 public class DemoBankSiteProperties {
@@ -11,6 +13,12 @@ public class DemoBankSiteProperties {
 
     private String baseUrl =
             "http://127.0.0.1:5190";
+
+    private Set<String> allowedHosts =
+            Set.of(
+                    "127.0.0.1",
+                    "localhost"
+            );
 
     public boolean isEnabled() {
         return enabled;
@@ -30,5 +38,15 @@ public class DemoBankSiteProperties {
             String baseUrl
     ) {
         this.baseUrl = baseUrl;
+    }
+
+    public Set<String> getAllowedHosts() {
+        return allowedHosts;
+    }
+
+    public void setAllowedHosts(
+            Set<String> allowedHosts
+    ) {
+        this.allowedHosts = allowedHosts;
     }
 }

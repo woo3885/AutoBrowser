@@ -25,18 +25,9 @@ public class DemoNavigationPolicy {
             );
 
     /*
-     * 개발용 Demo Bank에 한해서만 허용하는
-     * loopback host.
-     *
      * 사용자가 직접 host를 보내는 구조가 아니라
-     * 서버의 DEMO_BANK_BASE_URL 설정값만 검증한다.
+     * 서버의 DEMO_BANK_BASE_URL 설정값을 허용 목록과 대조한다.
      */
-    private static final Set<String> ALLOWED_DEMO_HOSTS =
-            Set.of(
-                    "127.0.0.1",
-                    "localhost"
-            );
-
     /*
      * 경로 traversal 및 encoded slash/backslash 방지.
      *
@@ -419,20 +410,27 @@ public class DemoNavigationPolicy {
                 baseUri.getHost();
 
         /*
-         * D17 개발 Demo Bank는
-         * loopback에서만 실행한다.
+         * 로컬 기본값과 배포 환경에서 명시한 Demo Bank host만 허용한다.
          */
-        if (host == null
-                || !ALLOWED_DEMO_HOSTS.contains(
-                host.toLowerCase(
-                        Locale.ROOT
-                )
-        )) {
+        Set<String> allowedHosts =
+                properties.getAllowedHosts();
+
+        boolean allowedHost =
+                host != null
+                        && allowedHosts != null
+                        && allowedHosts.stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(value -> !value.isEmpty())
+                        .map(value -> value.toLowerCase(Locale.ROOT))
+                        .anyMatch(host.toLowerCase(Locale.ROOT)::equals);
+
+        if (!allowedHost) {
 
             throw new IllegalStateException(
-                    "개발용 데모 사이트는 "
-                            + "127.0.0.1 또는 localhost만 "
-                            + "사용할 수 있습니다."
+                    "DEMO_BANK_BASE_URL host가 "
+                            + "DDD_DEMO_BANK_ALLOWED_HOSTS에 "
+                            + "포함되어 있지 않습니다."
             );
         }
 

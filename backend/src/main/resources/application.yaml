@@ -49,6 +49,7 @@ ddd:
   demo-bank:
     enabled: ${DDD_DEMO_BANK_ENABLED:false}
     base-url: ${DEMO_BANK_BASE_URL:http://127.0.0.1:5190}
+    allowed-hosts: ${DDD_DEMO_BANK_ALLOWED_HOSTS:127.0.0.1,localhost}
 
   frame-websocket:
     allowed-origins: ${DDD_FRAME_WS_ALLOWED_ORIGINS:http://127.0.0.1:5173}
