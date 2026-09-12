@@ -11,7 +11,10 @@ import {
   validateConversationInteractionDecision,
 } from "../conversation/conversationInteraction.policy.js";
 
-const MODEL_TIMEOUT_MS = 5_000;
+const configuredModelTimeout = Number(process.env.AI_ENGINE_MODEL_TIMEOUT_MS ?? 12_000);
+const MODEL_TIMEOUT_MS = Number.isFinite(configuredModelTimeout) && configuredModelTimeout > 0
+  ? configuredModelTimeout
+  : 12_000;
 
 export function createConversationDecisionRouter(
   model: ConversationModelPort = new ScriptedConversationModel(),

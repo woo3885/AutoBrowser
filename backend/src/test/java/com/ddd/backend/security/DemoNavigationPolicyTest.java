@@ -117,6 +117,33 @@ class DemoNavigationPolicyTest {
     }
 
     @Test
+    void configuredGenericSiteAllowsAnySafeRelativePath() {
+        properties.setGenericEnabled(true);
+        properties.setGenericSiteId("browser-site");
+        properties.setGenericBaseUrl("https://docs.example.com");
+        properties.setGenericAllowedHosts(Set.of("docs.example.com"));
+
+        DemoNavigationTarget target = policy.resolve("browser-site", "/guides/getting-started");
+
+        assertThat(target.targetUri().toString())
+                .isEqualTo("https://docs.example.com/guides/getting-started");
+        policy.validateNavigatedTarget(target, "https://docs.example.com/welcome");
+    }
+
+    @Test
+    void genericSiteRejectsAnUnlistedHostAndAbsoluteUrl() {
+        properties.setGenericEnabled(true);
+        properties.setGenericBaseUrl("https://unlisted.example.com");
+        properties.setGenericAllowedHosts(Set.of("allowed.example.com"));
+
+        assertThatThrownBy(() -> policy.resolve("browser-site", "/"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("allowlisted");
+        assertThatThrownBy(() -> policy.resolve("browser-site", "https://evil.example/"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void 데모_사이트가_비활성화되어_있으면_거부한다() {
         properties.setEnabled(false);
 

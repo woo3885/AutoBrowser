@@ -62,6 +62,9 @@ public class DemoNavigationPolicy {
             String siteId,
             String initialPath
     ) {
+        if (siteId != null && siteId.trim().equals(properties.getGenericSiteId())) {
+            return resolveGeneric(initialPath);
+        }
         validateSiteId(
                 siteId
         );
@@ -176,7 +179,7 @@ public class DemoNavigationPolicy {
          * 같은 Demo Bank 내 다른 페이지로 redirect되더라도
          * 세션 시작 계약상 허용하지 않는다.
          */
-        if (!Objects.equals(
+        if (DEMO_BANK_SITE_ID.equals(expectedTarget.siteId()) && !Objects.equals(
                 expectedUri.getPath(),
                 actualUri.getPath()
         )) {
@@ -201,7 +204,7 @@ public class DemoNavigationPolicy {
         /*
          * 최종 경로도 서버 allowlist에 존재해야 한다.
          */
-        if (!ALLOWED_PATHS.contains(
+        if (DEMO_BANK_SITE_ID.equals(expectedTarget.siteId()) && !ALLOWED_PATHS.contains(
                 actualUri.getPath()
         )) {
             throw new IllegalStateException(
@@ -217,6 +220,75 @@ public class DemoNavigationPolicy {
                 && ALLOWED_PATHS.contains(
                 initialPath
         );
+    }
+
+    private DemoNavigationTarget resolveGeneric(String initialPath) {
+        if (!properties.isGenericEnabled()) {
+            throw new IllegalStateException("Generic browser site is disabled");
+        }
+        String siteId = properties.getGenericSiteId();
+        if (siteId == null || siteId.isBlank() || DEMO_BANK_SITE_ID.equals(siteId.trim())) {
+            throw new IllegalStateException("DDD_BROWSER_SITE_ID is invalid");
+        }
+        String safePath = validateGenericPath(initialPath);
+        URI baseUri = validateGenericBaseUri();
+        URI targetUri = baseUri.resolve(safePath);
+        validateGenericOrigin(baseUri, targetUri);
+        return new DemoNavigationTarget(siteId.trim(), safePath, targetUri);
+    }
+
+    private String validateGenericPath(String initialPath) {
+        if (initialPath == null || initialPath.isBlank()) {
+            throw new IllegalArgumentException("initialPath is required");
+        }
+        String path = initialPath.trim();
+        if (path.length() > MAX_PATH_LENGTH || !path.startsWith("/") || path.startsWith("//")
+                || path.contains("?") || path.contains("#") || path.contains("\\")) {
+            throw new IllegalArgumentException("Unsafe generic initialPath");
+        }
+        String lower = path.toLowerCase(Locale.ROOT);
+        if (lower.contains("..") || DANGEROUS_ENCODING.matcher(lower).find()) {
+            throw new IllegalArgumentException("Unsafe generic initialPath");
+        }
+        return path;
+    }
+
+    private URI validateGenericBaseUri() {
+        String raw = properties.getGenericBaseUrl();
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalStateException("DDD_BROWSER_SITE_BASE_URL is required");
+        }
+        final URI uri;
+        try {
+            uri = URI.create(raw.trim());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException("DDD_BROWSER_SITE_BASE_URL is invalid");
+        }
+        String scheme = uri.getScheme();
+        if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
+                || uri.getHost() == null || uri.getUserInfo() != null
+                || uri.getQuery() != null || uri.getFragment() != null
+                || (uri.getPath() != null && !uri.getPath().isBlank() && !"/".equals(uri.getPath()))) {
+            throw new IllegalStateException("DDD_BROWSER_SITE_BASE_URL must be an HTTP(S) origin");
+        }
+        boolean allowed = properties.getGenericAllowedHosts().stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .anyMatch(host -> host.equalsIgnoreCase(uri.getHost()));
+        if (!allowed) {
+            throw new IllegalStateException("Generic browser host is not allowlisted");
+        }
+        return uri;
+    }
+
+    private void validateGenericOrigin(URI baseUri, URI targetUri) {
+        if (!equalsIgnoreCase(baseUri.getScheme(), targetUri.getScheme())
+                || !equalsIgnoreCase(baseUri.getHost(), targetUri.getHost())
+                || baseUri.getPort() != targetUri.getPort()
+                || targetUri.getUserInfo() != null || targetUri.getQuery() != null
+                || targetUri.getFragment() != null) {
+            throw new IllegalStateException("Generic browser target must stay on the configured origin");
+        }
     }
 
     private void validateSiteId(

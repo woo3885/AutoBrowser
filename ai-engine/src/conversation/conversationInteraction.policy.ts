@@ -41,13 +41,10 @@ const SNAPSHOT_MODES = new Set<AgentDecision["mode"]>([
   "COMPLETE",
 ]);
 
-const POLICY_BOUND_SNAPSHOT_MODES = new Set<AgentDecision["mode"]>([
-  "AUTO_EXECUTE",
-  "GUIDE_USER",
+const PROTECTED_SNAPSHOT_MODES = new Set<AgentDecision["mode"]>([
   "SECURE_INPUT_REQUIRED",
   "RISK_WARNING",
   "FINAL_CONFIRMATION_REQUIRED",
-  "COMPLETE",
 ]);
 
 const TERMINAL_REASON_CODES = new Set([
@@ -565,7 +562,7 @@ export function validateConversationInteractionDecision(
         errors.push(
           decision.mode === "GUIDE_USER"
             ? "/actionCandidate target must have NORMAL or USER_DECISION security policy"
-            : "/actionCandidate target must have NORMAL security policy",
+            : "/actionCandidate target must have NORMAL security policy under the current snapshot policy",
         );
       }
       if (!target.role || candidate.role !== target.role.toLowerCase()) {
@@ -590,6 +587,17 @@ export function validateConversationInteractionDecision(
         !["CLICK", "TYPE"].includes(candidate.actionType)
       ) {
         errors.push("/actionCandidate/actionType must be CLICK or TYPE for AUTO_EXECUTE");
+      }
+      if (
+        decision.mode === "AUTO_EXECUTE" &&
+        candidate.actionType === "TYPE" &&
+        ((!candidate.inputValue && !input.goal.amount?.value) ||
+          (candidate.inputValue != null && containsSensitiveInput(candidate.inputValue)))
+      ) {
+        errors.push("/actionCandidate/inputValue must be safe non-sensitive text for TYPE");
+      }
+      if (candidate.actionType !== "TYPE" && candidate.inputValue != null) {
+        errors.push("/actionCandidate/inputValue is only allowed for TYPE");
       }
     }
   }
@@ -634,18 +642,17 @@ export function validateConversationInteractionDecision(
     }
   }
 
-  if (POLICY_BOUND_SNAPSHOT_MODES.has(decision.mode)) {
-    const expected = decideConversationInteraction(input);
-    if (expected.mode !== decision.mode) {
-      errors.push(`/mode conflicts with current protection policy; expected ${expected.mode}`);
-    }
-    if (
-      JSON.stringify(expected.actionCandidate) !==
-      JSON.stringify(decision.actionCandidate)
-    ) {
-      errors.push("/actionCandidate must match the current snapshot policy");
-    }
+  const protectedDecision = decideConversationInteraction(input);
+  if (
+    PROTECTED_SNAPSHOT_MODES.has(protectedDecision.mode) &&
+    decision.mode !== protectedDecision.mode
+  ) {
+    errors.push(`/mode conflicts with current protection policy; expected ${protectedDecision.mode}`);
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+function containsSensitiveInput(value: string): boolean {
+  return /(?:password|passwd|비밀번호|otp|인증번호|보안코드|card\s*number|카드번호|cvc|cvv)/iu.test(value);
 }

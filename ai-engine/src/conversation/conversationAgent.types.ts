@@ -105,6 +105,8 @@ export interface ConversationActionCandidate {
   role: string;
   accessibleLabel: string;
   guide: string;
+  /** Non-sensitive text for a NORMAL textbox. Never used for credentials. */
+  inputValue?: string | null;
 }
 
 export interface AgentDecision {

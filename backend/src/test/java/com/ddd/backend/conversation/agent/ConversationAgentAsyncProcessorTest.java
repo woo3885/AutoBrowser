@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 import com.ddd.backend.conversation.*;
 import com.ddd.backend.conversation.event.ConversationEventPublisher;
 import com.ddd.backend.domain.session.AutomationSession;
+import com.ddd.backend.domain.session.WorkflowStatus;
 import com.ddd.backend.infrastructure.session.InMemoryAutomationSessionRepository;
 import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
@@ -40,6 +41,32 @@ class ConversationAgentAsyncProcessorTest {
         verify(coordinator, times(1)).process(session.getSessionId(), accepted, "예금 가입", null);
         verify(events, times(1)).accepted(eq(session.getSessionId()), eq("message-1"), eq(1L),
                 any(), any());
+        processor.close();
+    }
+
+    @Test
+    void invalidModelDecisionDoesNotTerminateTheSession() throws Exception {
+        var coordinator = mock(ConversationAgentCoordinator.class);
+        var events = mock(ConversationEventPublisher.class);
+        var mailbox = mock(SessionMessageMailbox.class);
+        when(mailbox.isActive(anyString(), anyString())).thenReturn(true);
+        var sessions = new InMemoryAutomationSessionRepository();
+        AutomationSession session = sessions.save(AutomationSession.create("search the current page"));
+        CountDownLatch attempted = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            attempted.countDown();
+            throw new IllegalArgumentException("invalid model decision");
+        }).when(coordinator).process(anyString(), any(), anyString(), isNull());
+        var processor = new ConversationAgentAsyncProcessor(coordinator, events, sessions, mailbox);
+        var accepted = new MessageAcceptance(session.getSessionId(), "request-retry", "message-retry",
+                1, MessageQueueStatus.ACTIVE, Instant.now(), false);
+
+        processor.submit(session.getSessionId(), accepted, "search the current page", null);
+
+        assertThat(attempted.await(2, TimeUnit.SECONDS)).isTrue();
+        verify(mailbox, timeout(1000)).completeActive(session.getSessionId(), "message-retry");
+        assertThat(sessions.findById(session.getSessionId()).orElseThrow().getStatus())
+                .isEqualTo(WorkflowStatus.SESSION_CREATED);
         processor.close();
     }
 }

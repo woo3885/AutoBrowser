@@ -5,6 +5,7 @@ import type { AgentDecision, ConversationAgentRequest } from "../conversation/co
 import {
   GeminiConversationContractError,
   GeminiConversationModel,
+  SafetyBoundConversationModel,
   type GeminiConversationTransport,
 } from "../conversation/geminiConversation.model.js";
 import { ScriptedConversationModel } from "../conversation/scriptedConversation.model.js";
@@ -197,4 +198,64 @@ test("C-GUIDE-GEMINI-15 rejects nonexistent and duplicate internal references", 
     ...duplicateInput.snapshot!.sanitizedDomSnapshot.elements[0]!,
   });
   await rejectsContract(duplicateInput, decision);
+});
+
+test("site-agnostic planner may choose a safe action on an unrelated website", async () => {
+  const input = request("03");
+  input.goal.intent = "UNKNOWN";
+  input.goal.normalizedRequest = "검색창에서 서울 날씨를 검색해줘";
+  input.snapshot!.sanitizedDomSnapshot.page.url = "https://search.example.com/";
+  input.snapshot!.sanitizedDomSnapshot.page.title = "Example Search";
+  input.snapshot!.sanitizedDomSnapshot.elements = [{
+    elementId: "el-search-box",
+    tag: "input",
+    role: "textbox",
+    text: null,
+    ariaLabel: "검색",
+    placeholder: "검색어 입력",
+    inputType: "search",
+    visible: true,
+    enabled: true,
+    checked: null,
+    boundingBox: { x: 10, y: 10, width: 300, height: 40 },
+    securityPolicy: "NORMAL",
+  }];
+  const message = "검색창에 서울 날씨를 입력합니다.";
+  const decision: AgentDecision = {
+    requestId: input.requestId,
+    requestMessageId: input.requestMessageId,
+    goalId: input.goal.goalId,
+    baseGoalRevision: input.goal.revision,
+    mode: "AUTO_EXECUTE",
+    message,
+    confidence: 0.95,
+    reasonCode: "MODEL_SAFE_ACTION",
+    nextCondition: null,
+    sourceSnapshotId: input.snapshot!.sourceSnapshotId,
+    goalPatch: null,
+    question: null,
+    actionCandidate: {
+      actionType: "TYPE",
+      targetElementId: "el-search-box",
+      role: "textbox",
+      accessibleLabel: "검색",
+      guide: message,
+      inputValue: "서울 날씨",
+    },
+  };
+
+  assert.deepEqual(await adapter(decision).decide(input), decision);
+});
+
+test("deterministic security boundary runs before the site-agnostic model", async () => {
+  let modelCalls = 0;
+  const model = new SafetyBoundConversationModel(new GeminiConversationModel(async () => {
+    modelCalls += 1;
+    return "{}";
+  }));
+
+  const decision = await model.decide(request("08"));
+
+  assert.equal(decision.mode, "SECURE_INPUT_REQUIRED");
+  assert.equal(modelCalls, 0);
 });

@@ -152,6 +152,12 @@ export const agentDecisionSchema = {
             role: { type: "string", minLength: 1, maxLength: 32 },
             accessibleLabel: { type: "string", minLength: 1, maxLength: 120, pattern: "^[^\\r\\n]+$" },
             guide: { type: "string", minLength: 1, maxLength: 200, pattern: "^[^\\r\\n]+$" },
+            inputValue: {
+              anyOf: [
+                { type: "null" },
+                { type: "string", minLength: 1, maxLength: 500, pattern: "^[^\\r\\n]+$" },
+              ],
+            },
           },
         },
       ],

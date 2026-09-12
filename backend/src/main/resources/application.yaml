@@ -50,6 +50,12 @@ ddd:
     enabled: ${DDD_DEMO_BANK_ENABLED:false}
     base-url: ${DEMO_BANK_BASE_URL:http://127.0.0.1:5190}
     allowed-hosts: ${DDD_DEMO_BANK_ALLOWED_HOSTS:127.0.0.1,localhost}
+    # Optional site-agnostic target. The client sends siteId + a relative initialPath;
+    # the backend never accepts an arbitrary absolute URL from the browser.
+    generic-enabled: ${DDD_BROWSER_SITE_ENABLED:false}
+    generic-site-id: ${DDD_BROWSER_SITE_ID:browser-site}
+    generic-base-url: ${DDD_BROWSER_SITE_BASE_URL:}
+    generic-allowed-hosts: ${DDD_BROWSER_SITE_ALLOWED_HOSTS:}
 
   frame-websocket:
     allowed-origins: ${DDD_FRAME_WS_ALLOWED_ORIGINS:http://127.0.0.1:5173}

@@ -59,11 +59,14 @@ public final class ConversationAgentAsyncProcessor {
             String errorCode = classify(exception);
             log.warn("Conversation AI processing failed. errorCode={}, exceptionType={}, reason={}",
                     errorCode, exception.getClass().getSimpleName(), exception.getMessage());
-            session.transitionTo(WorkflowStatus.ERROR);
+            // Model and wire-contract failures are recoverable. Preserve the current
+            // browser/session state so the user can retry with the latest DOM.
+            WorkflowStatus recoverableStatus = session.getStatus();
             sessions.save(session);
             events.message(sessionId, java.util.UUID.randomUUID().toString(),
                     acceptance.acceptedSequence(), "AI 판단을 완료하지 못했습니다.",
-                    0, WorkflowStatus.ERROR, errorCode, Instant.now());
+                    0, recoverableStatus, errorCode, Instant.now());
+            mailbox.completeActive(sessionId, acceptance.messageId());
         }
     }
 

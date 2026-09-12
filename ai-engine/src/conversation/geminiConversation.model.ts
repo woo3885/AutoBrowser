@@ -4,6 +4,7 @@ import type {
   ConversationAgentRequest,
 } from "./conversationAgent.types.js";
 import { validateConversationInteractionDecision } from "./conversationInteraction.policy.js";
+import { decideConversationInteraction } from "./conversationInteraction.policy.js";
 import type { ConversationModelPort } from "./conversationModel.port.js";
 
 export interface GeminiConversationTransportInput {
@@ -33,28 +34,60 @@ export class GeminiConversationModel implements ConversationModelPort {
   constructor(private readonly transport: GeminiConversationTransport) {}
 
   async decide(input: ConversationAgentRequest): Promise<AgentDecision> {
-    const raw = await this.transport({
-      prompt: createConversationPrompt(input),
-    });
+    const basePrompt = createConversationPrompt(input);
+    let lastError: GeminiConversationContractError | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const prompt = attempt === 0
+        ? basePrompt
+        : `${basePrompt}\n\nYour previous response was rejected: ${lastError?.message}. Return one corrected JSON object only.`;
+      const raw = await this.transport({ prompt });
+      let candidate: unknown;
+      try {
+        candidate = JSON.parse(extractJson(raw));
+      } catch {
+        lastError = new GeminiConversationContractError(
+          "INVALID_JSON",
+          "Gemini conversation output was not valid JSON.",
+        );
+        continue;
+      }
 
-    let candidate: unknown;
-    try {
-      candidate = JSON.parse(raw);
-    } catch {
-      throw new GeminiConversationContractError(
-        "INVALID_JSON",
-        "Gemini conversation output was not valid JSON.",
-      );
-    }
-
-    const validation = validateConversationInteractionDecision(input, candidate);
-    if (!validation.valid) {
-      throw new GeminiConversationContractError(
+      const validation = validateConversationInteractionDecision(input, candidate);
+      if (validation.valid) return candidate as AgentDecision;
+      lastError = new GeminiConversationContractError(
         "INVALID_DECISION",
         `Gemini conversation output violated the contract: ${validation.errors.join("; ")}`,
       );
     }
-
-    return candidate as AgentDecision;
+    throw lastError ?? new GeminiConversationContractError(
+      "INVALID_DECISION",
+      "Gemini conversation output could not be validated.",
+    );
   }
+}
+
+/** Keeps non-negotiable security boundaries deterministic, while all ordinary
+ * navigation decisions remain model-driven and site-agnostic. */
+export class SafetyBoundConversationModel implements ConversationModelPort {
+  constructor(private readonly delegate: ConversationModelPort) {}
+
+  decide(input: ConversationAgentRequest): Promise<AgentDecision> {
+    if (input.snapshot) {
+      const protectedDecision = decideConversationInteraction(input);
+      if ([
+        "SECURE_INPUT_REQUIRED",
+        "RISK_WARNING",
+        "FINAL_CONFIRMATION_REQUIRED",
+      ].includes(protectedDecision.mode)) {
+        return Promise.resolve(protectedDecision);
+      }
+    }
+    return this.delegate.decide(input);
+  }
+}
+
+function extractJson(raw: string): string {
+  const trimmed = raw.trim();
+  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/iu.exec(trimmed);
+  return fenced?.[1]?.trim() ?? trimmed;
 }

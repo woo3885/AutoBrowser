@@ -12,10 +12,15 @@ public record ConversationAgentDecision(
             String targetElementId,
             String role,
             String accessibleLabel,
-            String guide
+            String guide,
+            String inputValue
     ) {
         public ActionCandidate(String actionType) {
-            this(actionType, null, null, null, null);
+            this(actionType, null, null, null, null, null);
+        }
+        public ActionCandidate(String actionType, String targetElementId, String role,
+                String accessibleLabel, String guide) {
+            this(actionType, targetElementId, role, accessibleLabel, guide, null);
         }
     }
 }

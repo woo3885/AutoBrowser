@@ -238,11 +238,14 @@ public final class ConversationAgentCoordinator {
         }
         String value = null;
         if (actionType == BrowserActionType.TYPE) {
-            var amount = state.goal().amount();
-            if (amount == null || amount.value() == null || amount.value().isBlank()) {
-                throw new IllegalStateException("AUTO_EXECUTE TYPE requires an authoritative goal value");
+            value = candidate.inputValue();
+            if (value == null || value.isBlank()) {
+                var amount = state.goal().amount();
+                if (amount == null || amount.value() == null || amount.value().isBlank()) {
+                    throw new IllegalStateException("AUTO_EXECUTE TYPE requires an authoritative safe value");
+                }
+                value = amount.value();
             }
-            value = amount.value();
         }
         return actionExecutionService.executeAiElementAction(
                 sessionId, actionType, candidate.targetElementId(), value);

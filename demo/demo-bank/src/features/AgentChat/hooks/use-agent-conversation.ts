@@ -24,6 +24,8 @@ export interface AgentConversationDependencies {
   overlayHttpClient?: OverlayHttpClient;
   bridgeBinding?: DemoAgentBridgeBinding | null;
   pageProtection?: AgentPageProtection;
+  automationSiteId?: string;
+  automationInitialPath?: string;
 }
 
 function defaultId(prefix: string) {
@@ -62,6 +64,10 @@ export function useAgentConversation(dependencies: AgentConversationDependencies
   const stompClient = useMemo(() => dependencies.stompClient ?? createNativeConversationStompClient(), [dependencies.stompClient]);
   const createId = dependencies.createId ?? defaultId;
   const pageProtection = dependencies.pageProtection ?? 'NONE';
+  const automationSiteId = dependencies.automationSiteId ??
+    import.meta.env.VITE_AUTOMATION_SITE_ID ?? 'demo-bank';
+  const automationInitialPath = dependencies.automationInitialPath ??
+    import.meta.env.VITE_AUTOMATION_INITIAL_PATH ?? safeInitialPath();
   pageProtectionRef.current = pageProtection;
   const protection = getConversationProtectionPolicy(state, pageProtection);
 
@@ -229,8 +235,8 @@ export function useAgentConversation(dependencies: AgentConversationDependencies
             clientOccurredAt: message.occurredAt
           }, controller.signal)
         : await httpClient.createSession({
-            requestId, messageId, content, siteId: 'demo-bank',
-            initialPath: safeInitialPath(), clientOccurredAt: message.occurredAt
+            requestId, messageId, content, siteId: automationSiteId,
+            initialPath: automationInitialPath, clientOccurredAt: message.occurredAt
           }, controller.signal);
       if (!current.sessionId) {
         apply({ type: 'SESSION_ASSIGNED', sessionId: ack.sessionId });

@@ -20,6 +20,11 @@ public class DemoBankSiteProperties {
                     "localhost"
             );
 
+    private boolean genericEnabled = false;
+    private String genericSiteId = "browser-site";
+    private String genericBaseUrl = "";
+    private Set<String> genericAllowedHosts = Set.of();
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -48,5 +53,16 @@ public class DemoBankSiteProperties {
             Set<String> allowedHosts
     ) {
         this.allowedHosts = allowedHosts;
+    }
+
+    public boolean isGenericEnabled() { return genericEnabled; }
+    public void setGenericEnabled(boolean genericEnabled) { this.genericEnabled = genericEnabled; }
+    public String getGenericSiteId() { return genericSiteId; }
+    public void setGenericSiteId(String genericSiteId) { this.genericSiteId = genericSiteId; }
+    public String getGenericBaseUrl() { return genericBaseUrl; }
+    public void setGenericBaseUrl(String genericBaseUrl) { this.genericBaseUrl = genericBaseUrl; }
+    public Set<String> getGenericAllowedHosts() { return genericAllowedHosts; }
+    public void setGenericAllowedHosts(Set<String> genericAllowedHosts) {
+        this.genericAllowedHosts = genericAllowedHosts == null ? Set.of() : Set.copyOf(genericAllowedHosts);
     }
 }

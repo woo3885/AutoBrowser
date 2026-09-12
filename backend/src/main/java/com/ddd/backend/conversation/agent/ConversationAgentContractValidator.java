@@ -68,6 +68,22 @@ public final class ConversationAgentContractValidator {
                     || blank(candidate.accessibleLabel()) || blank(candidate.guide())) {
                 throw new IllegalArgumentException("AUTO_EXECUTE requires a sanitized CLICK or TYPE target");
             }
+            if ("TYPE".equals(candidate.actionType())) {
+                String inputValue = candidate.inputValue();
+                boolean hasAuthoritativeAmount = request.goal().amount() != null
+                        && !blank(request.goal().amount().value());
+                if (blank(inputValue) && !hasAuthoritativeAmount) {
+                    throw new IllegalArgumentException("AUTO_EXECUTE TYPE requires a safe inputValue");
+                }
+                if (!blank(inputValue)) {
+                    if (inputValue.length() > 500 || inputValue.contains("\n") || inputValue.contains("\r")) {
+                        throw new IllegalArgumentException("AUTO_EXECUTE inputValue is invalid");
+                    }
+                    messagePolicy.sanitize(inputValue);
+                }
+            } else if (candidate.inputValue() != null) {
+                throw new IllegalArgumentException("inputValue is only allowed for TYPE");
+            }
         }
         if (decision.mode() == ConversationInteractionMode.INFORM_USER
                 && (decision.message() == null || decision.message().isBlank()

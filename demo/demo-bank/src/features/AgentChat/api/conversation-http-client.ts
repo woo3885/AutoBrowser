@@ -11,8 +11,8 @@ export interface InitialConversationRequest {
   requestId: string;
   messageId: string;
   content: string;
-  siteId: 'demo-bank';
-  initialPath: '/' | '/deposit/products' | '/transfer/accounts';
+  siteId: string;
+  initialPath: string;
   clientOccurredAt: string;
 }
 
