@@ -7,6 +7,17 @@
   padding: 0 20px 20px;
 }
 
+.auto-browser-workspace {
+  min-height: 100vh;
+  padding: 16px;
+  background: #101828;
+}
+
+.auto-browser-workspace > .agent-chat-shell {
+  width: 100%;
+  margin: 0;
+}
+
 .browser-launch-backdrop {
   position: fixed;
   inset: 0;
@@ -69,11 +80,10 @@
 }
 
 .agent-chat-shell-remote {
-  position: fixed;
-  inset: 12px;
-  z-index: 50;
+  position: relative;
   margin: 0;
   padding: 12px;
+  min-height: calc(100vh - 32px);
   overflow: auto;
   border-radius: 16px;
   background: #101828;
@@ -474,7 +484,7 @@
   }
 
   .agent-chat-shell-remote {
-    position: fixed;
+    position: relative;
     width: auto;
     margin: 0;
   }
