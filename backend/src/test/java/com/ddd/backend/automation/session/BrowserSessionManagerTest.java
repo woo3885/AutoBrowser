@@ -217,4 +217,43 @@ class BrowserSessionManagerTest {
                 exception.getMessage()
         );
     }
+    @Test
+    void cdpLiveStreamProducesJpegFramesAndAcceptsTextInput() throws Exception {
+        manager.createSession("live-session");
+        manager.execute("live-session", Duration.ofSeconds(5), page -> {
+            page.setContent("<input id='name'><input id='password' type='password' style='display:none'><button id='click' style='position:fixed;left:200px;top:100px;width:100px;height:50px' onclick='window.clicked=true'>Click</button>");
+            page.locator("#name").focus();
+            return null;
+        });
+
+        java.util.concurrent.atomic.AtomicReference<
+                com.ddd.backend.websocket.frame.LiveBrowserFrame> received =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        manager.startLiveStream("live-session", received::set);
+        for (int attempt = 0; attempt < 20 && received.get() == null; attempt++) {
+            manager.pumpLiveStream("live-session");
+            Thread.sleep(25);
+        }
+
+        assertTrue(received.get() != null && received.get().bytes().length > 0);
+        assertEquals(1280, received.get().width());
+        assertEquals(720, received.get().height());
+
+        manager.dispatchLiveText("live-session", "hello");
+        assertEquals("hello", manager.execute(
+                "live-session", Duration.ofSeconds(5),
+                page -> page.locator("#name").inputValue()));
+        manager.dispatchLiveClick("live-session", 220, 120);
+        assertEquals(Boolean.TRUE, manager.execute(
+                "live-session", Duration.ofSeconds(5),
+                page -> page.evaluate("() => window.clicked === true")));
+        manager.execute("live-session", Duration.ofSeconds(5), page -> {
+            page.locator("#password").evaluate("el => el.style.display = 'block'");
+            page.locator("#password").focus();
+            return null;
+        });
+        assertThrows(IllegalStateException.class,
+                () -> manager.dispatchLiveText("live-session", "secret"));
+        manager.stopLiveStream("live-session");
+    }
 }

@@ -5,9 +5,9 @@ import { parseRemoteFrameMetadata } from '../../src/features/AgentChat/ui/Remote
 describe('remote browser viewer frame contract', () => {
   it('현재 conversation session의 PNG frame metadata만 허용한다', () => {
     const metadata = {
-      type: 'BROWSER_FRAME', sessionId: 'session-1', frameId: 'frame-1',
+      type: 'LIVE_BROWSER_FRAME', sessionId: 'session-1',
       sequence: 1, timestamp: Date.now(), width: 1280, height: 720,
-      mimeType: 'image/png', byteLength: 1024
+      mimeType: 'image/jpeg', byteLength: 1024
     };
     expect(parseRemoteFrameMetadata(metadata, 'session-1')).toMatchObject({
       sessionId: 'session-1', sequence: 1, width: 1280, height: 720

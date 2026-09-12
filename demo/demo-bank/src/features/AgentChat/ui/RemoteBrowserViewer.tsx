@@ -2,16 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { PublicOverlayTarget } from '../model/overlay-types';
 
-const FRAME_PROTOCOL = 'ddd.browser-frame.v1';
-const MAX_FRAME_BYTES = 5 * 1024 * 1024;
+const LIVE_PROTOCOL = 'ddd.browser-live.v2';
+const MAX_FRAME_BYTES = 2 * 1024 * 1024;
 
 interface FrameMetadata {
   sessionId: string;
-  frameId: string;
   sequence: number;
   width: number;
   height: number;
-  mimeType: 'image/png';
+  mimeType: 'image/jpeg';
   byteLength: number;
 }
 
@@ -21,8 +20,15 @@ interface RemoteBrowserViewerProps {
   backendBaseUrl: string;
 }
 
-function frameUrl(baseUrl: string, sessionId: string): string {
-  const url = new URL(`/ws/sessions/${encodeURIComponent(sessionId)}/frames`, baseUrl);
+interface PendingWheel {
+  x: number;
+  y: number;
+  deltaX: number;
+  deltaY: number;
+}
+
+function liveUrl(baseUrl: string, sessionId: string): string {
+  const url = new URL(`/ws/sessions/${encodeURIComponent(sessionId)}/live`, baseUrl);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   return url.toString();
 }
@@ -30,20 +36,18 @@ function frameUrl(baseUrl: string, sessionId: string): string {
 export function parseRemoteFrameMetadata(value: unknown, sessionId: string): FrameMetadata | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const item = value as Record<string, unknown>;
-  if (item.type !== 'BROWSER_FRAME' || item.sessionId !== sessionId ||
-      typeof item.frameId !== 'string' || item.frameId.length < 1 || item.frameId.length > 100 ||
+  if (item.type !== 'LIVE_BROWSER_FRAME' || item.sessionId !== sessionId ||
       !Number.isSafeInteger(item.sequence) || Number(item.sequence) < 1 ||
       !Number.isFinite(item.width) || Number(item.width) <= 0 ||
       !Number.isFinite(item.height) || Number(item.height) <= 0 ||
-      item.mimeType !== 'image/png' || !Number.isSafeInteger(item.byteLength) ||
+      item.mimeType !== 'image/jpeg' || !Number.isSafeInteger(item.byteLength) ||
       Number(item.byteLength) < 1 || Number(item.byteLength) > MAX_FRAME_BYTES) return null;
   return {
     sessionId,
-    frameId: item.frameId,
     sequence: Number(item.sequence),
     width: Number(item.width),
     height: Number(item.height),
-    mimeType: 'image/png',
+    mimeType: 'image/jpeg',
     byteLength: Number(item.byteLength)
   };
 }
@@ -70,21 +74,33 @@ export function viewerCoordinates(
 export default function RemoteBrowserViewer({ sessionId, target, backendBaseUrl }: RemoteBrowserViewerProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<FrameMetadata | null>(null);
-  const [status, setStatus] = useState('원격 화면 연결 중');
+  const [status, setStatus] = useState('실시간 브라우저 연결 중');
   const currentUrl = useRef<string | null>(null);
-  const actionPending = useRef(false);
+  const socketRef = useRef<WebSocket | null>(null);
+  const metadataRef = useRef<FrameMetadata | null>(null);
+  const wheelRef = useRef<PendingWheel | null>(null);
+  const wheelTimerRef = useRef<number | null>(null);
+  const keyboardRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     let pending: FrameMetadata | null = null;
     let latestSequence = 0;
-    const socket = new WebSocket(frameUrl(backendBaseUrl, sessionId), FRAME_PROTOCOL);
+    const socket = new WebSocket(liveUrl(backendBaseUrl, sessionId), LIVE_PROTOCOL);
+    socketRef.current = socket;
     socket.binaryType = 'arraybuffer';
-    socket.onopen = () => setStatus('원격 화면 연결됨');
+    socket.onopen = () => setStatus('실시간 브라우저 연결됨');
     socket.onmessage = (event) => {
       if (typeof event.data === 'string') {
-        try { pending = parseRemoteFrameMetadata(JSON.parse(event.data), sessionId); }
-        catch { pending = null; }
-        if (!pending) setStatus('원격 화면 정보를 확인하지 못했습니다.');
+        try {
+          const value = JSON.parse(event.data) as Record<string, unknown>;
+          if (value.type === 'INPUT_REJECTED') {
+            setStatus(typeof value.detail === 'string' ? value.detail : '입력을 처리하지 못했습니다.');
+            return;
+          }
+          if (value.type === 'INPUT_ACCEPTED') return;
+          pending = parseRemoteFrameMetadata(value, sessionId);
+        } catch { pending = null; }
+        if (!pending) setStatus('실시간 화면 정보를 확인하지 못했습니다.');
         return;
       }
       const frame = pending;
@@ -95,50 +111,53 @@ export default function RemoteBrowserViewer({ sessionId, target, backendBaseUrl 
       const nextUrl = URL.createObjectURL(new Blob([event.data], { type: frame.mimeType }));
       const previousUrl = currentUrl.current;
       currentUrl.current = nextUrl;
+      metadataRef.current = frame;
       setMetadata(frame);
       setImageSrc(nextUrl);
-      setStatus('클릭하거나 스크롤하여 직접 조작할 수 있습니다.');
+      setStatus('실시간 조작 가능 · 화면 클릭 후 키보드 입력');
       if (previousUrl) URL.revokeObjectURL(previousUrl);
     };
-    socket.onerror = () => setStatus('원격 화면 연결을 확인해 주세요.');
-    socket.onclose = () => setStatus('원격 화면 연결이 종료되었습니다.');
+    socket.onerror = () => setStatus('실시간 화면 연결을 확인해 주세요.');
+    socket.onclose = () => setStatus('실시간 화면 연결이 종료되었습니다.');
     return () => {
+      socketRef.current = null;
       socket.close(1000, 'viewer closed');
+      if (wheelTimerRef.current !== null) window.clearTimeout(wheelTimerRef.current);
+      wheelTimerRef.current = null;
+      wheelRef.current = null;
       if (currentUrl.current) URL.revokeObjectURL(currentUrl.current);
       currentUrl.current = null;
+      metadataRef.current = null;
     };
   }, [backendBaseUrl, sessionId]);
 
-  const executeAction = async (body: Record<string, unknown>) => {
-    if (!metadata || actionPending.current) return;
-    actionPending.current = true;
-    try {
-      const response = await fetch(
-        new URL(`/api/v1/sessions/${encodeURIComponent(sessionId)}/actions`, backendBaseUrl),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({
-            requestId: `viewer-${crypto.randomUUID()}`,
-            source: 'USER_VIEWER',
-            elementId: null,
-            expectedFrameId: metadata.frameId,
-            expectedSequence: metadata.sequence,
-            ...body
-          })
-        }
-      );
-      if (!response.ok) throw new Error('ACTION_FAILED');
-      setStatus('조작을 반영하고 있습니다.');
-    } catch {
-      setStatus('조작하지 못했습니다. 최신 화면에서 다시 시도해 주세요.');
-    } finally {
-      actionPending.current = false;
-    }
+  const sendInput = (input: Record<string, unknown>) => {
+    const socket = socketRef.current;
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(input));
   };
 
-  const pointFromEvent = (clientX: number, clientY: number, element: HTMLElement) =>
-    metadata ? viewerCoordinates(clientX, clientY, element.getBoundingClientRect(), metadata.width, metadata.height) : null;
+  const pointFromEvent = (clientX: number, clientY: number, element: HTMLElement) => {
+    const frame = metadataRef.current;
+    return frame ? viewerCoordinates(
+      clientX, clientY, element.getBoundingClientRect(), frame.width, frame.height) : null;
+  };
+
+  const queueWheel = (wheel: PendingWheel) => {
+    const current = wheelRef.current;
+    wheelRef.current = current ? {
+      x: wheel.x,
+      y: wheel.y,
+      deltaX: Math.max(-3000, Math.min(3000, current.deltaX + wheel.deltaX)),
+      deltaY: Math.max(-3000, Math.min(3000, current.deltaY + wheel.deltaY))
+    } : wheel;
+    if (wheelTimerRef.current !== null) return;
+    wheelTimerRef.current = window.setTimeout(() => {
+      wheelTimerRef.current = null;
+      const pendingWheel = wheelRef.current;
+      wheelRef.current = null;
+      if (pendingWheel) sendInput({ type: 'WHEEL', ...pendingWheel });
+    }, 40);
+  };
 
   const visibleTarget = target && metadata &&
     target.viewport.width === metadata.width && target.viewport.height === metadata.height ? target : null;
@@ -150,28 +169,59 @@ export default function RemoteBrowserViewer({ sessionId, target, backendBaseUrl 
   } : undefined;
 
   return (
-    <section className="remote-browser-viewer" aria-label="원격 브라우저 화면">
+    <section className="remote-browser-viewer" aria-label="실시간 원격 브라우저 화면">
       <div className="remote-browser-heading">
-        <strong>원격 브라우저</strong>
+        <strong>실시간 브라우저</strong>
         <span role="status">{status}</span>
       </div>
       <div
         className="remote-browser-frame"
+        role="application"
+        tabIndex={0}
+        aria-label="클릭, 스크롤 및 키보드로 조작하는 원격 브라우저"
         onClick={(event) => {
+          keyboardRef.current?.focus({ preventScroll: true });
           const point = pointFromEvent(event.clientX, event.clientY, event.currentTarget);
-          if (point) void executeAction({ actionType: 'CLICK', ...point, deltaX: null, deltaY: null });
+          if (point) sendInput({ type: 'CLICK', ...point });
         }}
         onWheel={(event) => {
           const point = pointFromEvent(event.clientX, event.clientY, event.currentTarget);
           if (!point) return;
           event.preventDefault();
-          const deltaX = Math.max(-3000, Math.min(3000, Math.round(event.deltaX)));
-          const deltaY = Math.max(-3000, Math.min(3000, Math.round(event.deltaY)));
-          if (deltaX || deltaY) void executeAction({ actionType: 'SCROLL', ...point, deltaX, deltaY });
+          queueWheel({
+            ...point,
+            deltaX: Math.max(-3000, Math.min(3000, Math.round(event.deltaX))),
+            deltaY: Math.max(-3000, Math.min(3000, Math.round(event.deltaY)))
+          });
+        }}
+        onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) return;
+          if (event.ctrlKey || event.metaKey || event.altKey) return;
+          if (event.key.length === 1) {
+            event.preventDefault();
+            sendInput({ type: 'TEXT', text: event.key });
+            return;
+          }
+          if (['Enter', 'Tab', 'Backspace', 'Delete', 'Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+            event.preventDefault();
+            sendInput({ type: 'KEY', key: event.key });
+          }
+        }}
+        onCompositionEnd={(event) => {
+          if (event.data) sendInput({ type: 'TEXT', text: event.data });
+          if (keyboardRef.current) keyboardRef.current.value = '';
         }}
       >
-        {imageSrc ? <img src={imageSrc} draggable={false} alt="원격 브라우저에 열린 사이트 화면" /> : (
-          <p>첫 화면을 기다리고 있습니다.</p>
+        <textarea
+          ref={keyboardRef}
+          className="remote-browser-keyboard-capture"
+          aria-label="원격 브라우저 키보드 입력"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        {imageSrc ? <img src={imageSrc} draggable={false} alt="실시간 원격 브라우저 화면" /> : (
+          <p>첫 실시간 화면을 기다리고 있습니다.</p>
         )}
         {visibleTarget && highlightStyle ? (
           <div className="remote-browser-highlight" style={highlightStyle} aria-label={visibleTarget.label}>

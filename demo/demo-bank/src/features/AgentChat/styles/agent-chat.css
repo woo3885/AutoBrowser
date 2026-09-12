@@ -203,6 +203,11 @@
   user-select: none;
 }
 
+.remote-browser-frame:focus-within {
+  outline: 4px solid #fdb022;
+  outline-offset: 2px;
+}
+
 .remote-browser-frame > img {
   display: block;
   width: 100%;
@@ -215,6 +220,17 @@
   height: 100%;
   margin: 0;
   place-items: center;
+}
+
+.remote-browser-keyboard-capture {
+  position: absolute;
+  z-index: -1;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .remote-browser-highlight {

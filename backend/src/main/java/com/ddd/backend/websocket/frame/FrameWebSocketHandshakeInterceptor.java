@@ -24,7 +24,7 @@ public final class FrameWebSocketHandshakeInterceptor
             Pattern.compile(
                     "^/ws/sessions/"
                             + "([a-zA-Z0-9-]{1,100})"
-                            + "/frames$"
+                            + "/(?:frames|live)$"
             );
 
     private final BrowserFrameStore browserFrameStore;

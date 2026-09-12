@@ -7,9 +7,12 @@ import com.ddd.backend.automation.worker.PlaywrightWorker;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.CDPSession;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.ServiceWorkerPolicy;
+import com.google.gson.JsonObject;
+import com.ddd.backend.websocket.frame.LiveBrowserFrame;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +32,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.Base64;
+import java.util.function.Consumer;
 
 @Service
 public class BrowserSessionManager implements AutoCloseable {
@@ -87,6 +93,16 @@ public class BrowserSessionManager implements AutoCloseable {
             "browser-session-manager";
 
     private final Map<String, BrowserSession> sessions =
+            new ConcurrentHashMap<>();
+
+    private final Map<String, CDPSession> liveCdpSessions =
+            new ConcurrentHashMap<>();
+
+    private final Map<String, AtomicLong> liveFrameSequences =
+            new ConcurrentHashMap<>();
+
+    private final Map<String, Page> livePages = new ConcurrentHashMap<>();
+    private final Map<String, Consumer<LiveBrowserFrame>> liveFrameConsumers =
             new ConcurrentHashMap<>();
 
     private final PlaywrightWorker playwrightWorker;
@@ -280,6 +296,208 @@ public class BrowserSessionManager implements AutoCloseable {
                     return page.url();
                 }
         );
+    }
+
+    public synchronized void startLiveStream(
+            String sessionId,
+            Consumer<LiveBrowserFrame> frameConsumer
+    ) {
+        Objects.requireNonNull(frameConsumer, "frameConsumer is required");
+        execute(sessionId, Duration.ofSeconds(5), page -> {
+            liveFrameConsumers.put(sessionId, frameConsumer);
+            attachLiveStreamOnWorker(sessionId, page, frameConsumer);
+            return null;
+        });
+    }
+
+    public synchronized void pumpLiveStream(String sessionId) {
+        if (!liveCdpSessions.containsKey(sessionId) || !exists(sessionId)) return;
+        execute(sessionId, Duration.ofSeconds(2), page -> {
+            Consumer<LiveBrowserFrame> consumer = liveFrameConsumers.get(sessionId);
+            if (consumer != null && livePages.get(sessionId) != page) {
+                attachLiveStreamOnWorker(sessionId, page, consumer);
+            }
+            CDPSession cdp = liveCdpSessions.get(sessionId);
+            if (cdp != null) cdp.send("Runtime.evaluate", json("expression", "void 0"));
+            return null;
+        });
+    }
+
+    public synchronized void stopLiveStream(String sessionId) {
+        if (!liveCdpSessions.containsKey(sessionId) || !exists(sessionId)) return;
+        execute(sessionId, Duration.ofSeconds(3), page -> {
+            CDPSession cdp = liveCdpSessions.remove(sessionId);
+            liveFrameSequences.remove(sessionId);
+            livePages.remove(sessionId);
+            liveFrameConsumers.remove(sessionId);
+            if (cdp != null) {
+                try { cdp.send("Page.stopScreencast"); } finally { cdp.detach(); }
+            }
+            return null;
+        });
+    }
+
+    public synchronized void dispatchLiveKey(String sessionId, String key) {
+        if (key == null || key.isBlank() || key.length() > 32) return;
+        execute(sessionId, Duration.ofSeconds(3), page -> {
+            requiredLiveCdp(sessionId);
+            page.keyboard().press(key);
+            return null;
+        });
+    }
+
+    public synchronized void dispatchLiveClick(String sessionId, int x, int y) {
+        validateLiveCoordinates(x, y);
+        execute(sessionId, Duration.ofSeconds(3), page -> {
+            CDPSession cdp = requiredLiveCdp(sessionId);
+            JsonObject pressed = mouseEvent("mousePressed", x, y);
+            pressed.addProperty("button", "left");
+            pressed.addProperty("clickCount", 1);
+            cdp.send("Input.dispatchMouseEvent", pressed);
+            JsonObject released = mouseEvent("mouseReleased", x, y);
+            released.addProperty("button", "left");
+            released.addProperty("clickCount", 1);
+            cdp.send("Input.dispatchMouseEvent", released);
+            return null;
+        });
+    }
+
+    public synchronized void dispatchLiveWheel(
+            String sessionId, int x, int y, int deltaX, int deltaY
+    ) {
+        validateLiveCoordinates(x, y);
+        if (Math.abs((long) deltaX) > 3000 || Math.abs((long) deltaY) > 3000
+                || (deltaX == 0 && deltaY == 0)) {
+            throw new IllegalArgumentException("Invalid live wheel delta");
+        }
+        execute(sessionId, Duration.ofSeconds(3), page -> {
+            JsonObject wheel = mouseEvent("mouseWheel", x, y);
+            wheel.addProperty("deltaX", deltaX);
+            wheel.addProperty("deltaY", deltaY);
+            requiredLiveCdp(sessionId).send("Input.dispatchMouseEvent", wheel);
+            return null;
+        });
+    }
+
+    public synchronized void dispatchLiveText(String sessionId, String text) {
+        if (text == null || text.isEmpty() || text.length() > 500) return;
+        execute(sessionId, Duration.ofSeconds(3), page -> {
+            Object allowed = page.evaluate("""
+                    () => {
+                      const el = document.activeElement;
+                      if (!el) return false;
+                      const tag = String(el.tagName || '').toLowerCase();
+                      const type = String(el.type || '').toLowerCase();
+                      const sensitive = type === 'password' ||
+                        String(el.autocomplete || '').toLowerCase() === 'one-time-code';
+                      return !sensitive && (tag === 'input' || tag === 'textarea' || el.isContentEditable);
+                    }
+                    """);
+            if (!Boolean.TRUE.equals(allowed)) {
+                throw new IllegalStateException("The focused element does not allow live text input");
+            }
+            CDPSession cdp = requiredLiveCdp(sessionId);
+            cdp.send("Input.insertText", json("text", text));
+            return null;
+        });
+    }
+
+    private JsonObject json(String key, String value) {
+        JsonObject object = new JsonObject();
+        object.addProperty(key, value);
+        return object;
+    }
+
+    private void attachLiveStreamOnWorker(
+            String sessionId, Page page, Consumer<LiveBrowserFrame> frameConsumer
+    ) {
+        CDPSession previous = liveCdpSessions.remove(sessionId);
+        if (previous != null) {
+            try { previous.detach(); } catch (RuntimeException ignored) { }
+        }
+        CDPSession cdp = page.context().newCDPSession(page);
+        AtomicLong sequence = liveFrameSequences.computeIfAbsent(
+                sessionId, ignored -> new AtomicLong());
+        liveCdpSessions.put(sessionId, cdp);
+        livePages.put(sessionId, page);
+        AtomicBoolean captureAllowed = new AtomicBoolean(false);
+        AtomicLong lastSecurityCheck = new AtomicLong(0);
+        page.onFrameNavigated(frame -> {
+            if (frame == page.mainFrame()) captureAllowed.set(false);
+        });
+        cdp.on("Page.screencastFrame", event -> {
+            try {
+                long cdpSessionId = event.get("sessionId").getAsLong();
+                JsonObject ack = new JsonObject();
+                ack.addProperty("sessionId", cdpSessionId);
+                cdp.send("Page.screencastFrameAck", ack);
+                long now = System.nanoTime();
+                if (!captureAllowed.get() || now - lastSecurityCheck.get() > 250_000_000L) {
+                    boolean allowed = isLiveCaptureAllowed(page);
+                    captureAllowed.set(allowed);
+                    lastSecurityCheck.set(now);
+                    if (!allowed) return;
+                }
+                JsonObject metadata = event.getAsJsonObject("metadata");
+                byte[] bytes = Base64.getDecoder().decode(event.get("data").getAsString());
+                if (bytes.length == 0 || bytes.length > 2 * 1024 * 1024) return;
+                int width = metadata.has("deviceWidth")
+                        ? metadata.get("deviceWidth").getAsInt() : VIEWPORT_WIDTH;
+                int height = metadata.has("deviceHeight")
+                        ? metadata.get("deviceHeight").getAsInt() : VIEWPORT_HEIGHT;
+                frameConsumer.accept(new LiveBrowserFrame(
+                        sessionId, sequence.incrementAndGet(), width, height, bytes));
+            } catch (RuntimeException exception) {
+                log.debug("Dropped invalid CDP screencast frame. sessionId={}", sessionId);
+            }
+        });
+        cdp.send("Page.enable");
+        JsonObject options = new JsonObject();
+        options.addProperty("format", "jpeg");
+        options.addProperty("quality", 65);
+        options.addProperty("maxWidth", VIEWPORT_WIDTH);
+        options.addProperty("maxHeight", VIEWPORT_HEIGHT);
+        options.addProperty("everyNthFrame", 1);
+        cdp.send("Page.startScreencast", options);
+    }
+
+    private boolean isLiveCaptureAllowed(Page page) {
+        try {
+            for (com.microsoft.playwright.Frame frame : page.frames()) {
+                var secure = frame.locator("""
+                        [data-ddd-policy="secure-input"],
+                        input[type="password" i],
+                        [autocomplete~="one-time-code"]
+                        """);
+                int count = secure.count();
+                for (int index = 0; index < count; index++) {
+                    if (secure.nth(index).isVisible()) return false;
+                }
+            }
+            return true;
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private CDPSession requiredLiveCdp(String sessionId) {
+        CDPSession cdp = liveCdpSessions.get(sessionId);
+        if (cdp == null) throw new IllegalStateException("Live browser stream is not active");
+        return cdp;
+    }
+
+    private JsonObject mouseEvent(String type, int x, int y) {
+        JsonObject event = new JsonObject();
+        event.addProperty("type", type);
+        event.addProperty("x", x);
+        event.addProperty("y", y);
+        return event;
+    }
+
+    private void validateLiveCoordinates(int x, int y) {
+        if (x < 0 || x >= VIEWPORT_WIDTH || y < 0 || y >= VIEWPORT_HEIGHT) {
+            throw new IllegalArgumentException("Live input coordinate is outside the viewport");
+        }
     }
 
     /** Installs an SSRF guard on the whole context before opening a user supplied URL. */
@@ -510,6 +728,14 @@ public class BrowserSessionManager implements AutoCloseable {
     private void closeSessionOnWorker(
             String sessionId
     ) {
+        CDPSession live = liveCdpSessions.remove(sessionId);
+        liveFrameSequences.remove(sessionId);
+        livePages.remove(sessionId);
+        liveFrameConsumers.remove(sessionId);
+        if (live != null) {
+            try { live.detach(); } catch (RuntimeException ignored) { }
+        }
+
         BrowserSession session =
                 sessions.remove(
                         sessionId
@@ -824,6 +1050,10 @@ public class BrowserSessionManager implements AutoCloseable {
         }
 
         sessions.clear();
+        liveCdpSessions.clear();
+        liveFrameSequences.clear();
+        livePages.clear();
+        liveFrameConsumers.clear();
 
         if (browser != null) {
 

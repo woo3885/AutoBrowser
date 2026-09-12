@@ -12,18 +12,24 @@ public class FrameWebSocketConfig
 
     public static final String FRAME_ENDPOINT_PATTERN =
             "/ws/sessions/*/frames";
+    public static final String LIVE_ENDPOINT_PATTERN =
+            "/ws/sessions/*/live";
 
     private final BrowserFrameWebSocketHandler frameHandler;
+    private final BrowserLiveWebSocketHandler liveHandler;
     private final FrameWebSocketHandshakeInterceptor handshakeInterceptor;
     private final FrameWebSocketProperties properties;
 
     public FrameWebSocketConfig(
             BrowserFrameWebSocketHandler frameHandler,
+            BrowserLiveWebSocketHandler liveHandler,
             FrameWebSocketHandshakeInterceptor handshakeInterceptor,
             FrameWebSocketProperties properties
     ) {
         this.frameHandler =
                 frameHandler;
+
+        this.liveHandler = liveHandler;
 
         this.handshakeInterceptor =
                 handshakeInterceptor;
@@ -52,5 +58,9 @@ public class FrameWebSocketConfig
                 .setAllowedOrigins(
                         allowedOrigins
                 );
+
+        registry.addHandler(liveHandler, LIVE_ENDPOINT_PATTERN)
+                .addInterceptors(handshakeInterceptor)
+                .setAllowedOrigins(allowedOrigins);
     }
 }
