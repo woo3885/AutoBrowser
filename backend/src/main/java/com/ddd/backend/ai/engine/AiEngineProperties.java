@@ -22,7 +22,7 @@ public class AiEngineProperties {
             Duration.ofSeconds(3);
 
     private Duration requestTimeout =
-            Duration.ofSeconds(15);
+            Duration.ofSeconds(40);
 
     public boolean isEnabled() {
         return enabled;
