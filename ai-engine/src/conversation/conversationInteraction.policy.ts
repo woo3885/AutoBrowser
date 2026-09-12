@@ -125,7 +125,7 @@ function withSnapshotMode(
   };
 }
 
-function safeTargetLabel(element: BackendSanitizedDomElement): string | null {
+export function safeTargetLabel(element: BackendSanitizedDomElement): string | null {
   for (const value of [element.ariaLabel, element.text, element.placeholder]) {
     if (
       !value?.trim() ||

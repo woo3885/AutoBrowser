@@ -96,9 +96,10 @@ test("C-D3-GEMINI-05 rejects final-confirmation CLICK", async () => {
   });
 });
 
-test("C-D3-GEMINI-06 rejects a stale sourceSnapshotId", async () => {
+test("C-D3-GEMINI-06 replaces model snapshot identity with Backend authority", async () => {
   const { request: input, decision } = await scriptedDecision("03");
-  await rejectsContract(input, { ...decision, sourceSnapshotId: "snap-old" });
+  const actual = await adapter({ ...decision, sourceSnapshotId: "snap-old" }).decide(input);
+  assert.equal(actual.sourceSnapshotId, input.snapshot!.sourceSnapshotId);
 });
 
 test("C-D3-GEMINI-07 rejects raw credential echo", async () => {
@@ -181,9 +182,10 @@ test("C-GUIDE-GEMINI-13 rejects GUIDE_USER on a final target", async () => {
   });
 });
 
-test("C-GUIDE-GEMINI-14 rejects AUTO_EXECUTE without sourceSnapshotId", async () => {
+test("C-GUIDE-GEMINI-14 restores AUTO_EXECUTE sourceSnapshotId from Backend authority", async () => {
   const { request: input, decision } = await scriptedDecision("03");
-  await rejectsContract(input, { ...decision, sourceSnapshotId: null });
+  const actual = await adapter({ ...decision, sourceSnapshotId: null }).decide(input);
+  assert.equal(actual.sourceSnapshotId, input.snapshot!.sourceSnapshotId);
 });
 
 test("C-GUIDE-GEMINI-15 rejects nonexistent and duplicate internal references", async () => {
@@ -258,4 +260,28 @@ test("deterministic security boundary runs before the site-agnostic model", asyn
 
   assert.equal(decision.mode, "SECURE_INPUT_REQUIRED");
   assert.equal(modelCalls, 0);
+});
+
+test("model action metadata is rebuilt from the authoritative current DOM", async () => {
+  const { request: input, decision } = await scriptedDecision("03");
+  const actual = await adapter({
+    ...decision,
+    requestId: "model-invented-request",
+    goalId: "model-invented-goal",
+    actionCandidate: {
+      ...decision.actionCandidate!,
+      role: "invented-role",
+      accessibleLabel: "invented-label",
+      guide: "invented-guide",
+    },
+  }).decide(input);
+
+  assert.equal(actual.requestId, input.requestId);
+  assert.equal(actual.goalId, input.goal.goalId);
+  const target = input.snapshot!.sanitizedDomSnapshot.elements.find(
+    (element) => element.elementId === decision.actionCandidate?.targetElementId,
+  );
+  assert.equal(actual.actionCandidate?.role,
+    target!.role);
+  assert.equal(actual.actionCandidate?.guide, actual.message);
 });

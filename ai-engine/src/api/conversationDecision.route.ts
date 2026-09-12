@@ -7,6 +7,7 @@ import {
 } from "../conversation/conversationAgent.validator.js";
 import { containsCredentialContext } from "../conversation/userGoalPatch.extractor.js";
 import type { ConversationAgentRequest } from "../conversation/conversationAgent.types.js";
+import { GeminiConversationContractError } from "../conversation/geminiConversation.model.js";
 import {
   validateConversationInteractionDecision,
 } from "../conversation/conversationInteraction.policy.js";
@@ -43,6 +44,7 @@ export function createConversationDecisionRouter(
       res.status(200).json(decision);
     } catch (error) {
       const timeout = error instanceof Error && error.message === "MODEL_TIMEOUT";
+      logConversationFailure(error, timeout);
       res.status(timeout ? 504 : 502).json({
         code: timeout ? "CONVERSATION_MODEL_TIMEOUT" : "CONVERSATION_MODEL_ERROR",
         message: "AI 판단을 완료하지 못했습니다.",
@@ -50,6 +52,25 @@ export function createConversationDecisionRouter(
     }
   });
   return router;
+}
+
+function logConversationFailure(error: unknown, timeout: boolean): void {
+  if (timeout) {
+    console.error("[AI Engine] Conversation decision failed. type=TIMEOUT");
+    return;
+  }
+  if (error instanceof GeminiConversationContractError) {
+    console.error(
+      `[AI Engine] Conversation decision failed. type=CONTRACT code=${error.code} reason=${error.message}`,
+    );
+    return;
+  }
+  const name = error instanceof Error ? error.name : "UnknownError";
+  const status = error && typeof error === "object" && "status" in error
+    ? String((error as { status?: unknown }).status ?? "unknown")
+    : "unknown";
+  // Do not log raw SDK messages because they can contain request metadata.
+  console.error(`[AI Engine] Conversation decision failed. type=TRANSPORT name=${name} status=${status}`);
 }
 
 async function withTimeout<T>(operation: Promise<T>): Promise<T> {
