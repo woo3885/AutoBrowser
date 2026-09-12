@@ -21,6 +21,17 @@ function withTarget() {
 }
 
 describe('Overlay conversation state', () => {
+  it('local bridge가 없는 직접 접속에서는 target을 원격 Viewer용으로 보관한다', () => {
+    const assigned = conversationReducer(createInitialConversationState('CONNECTED'), {
+      type: 'SESSION_ASSIGNED', sessionId: 'session-1'
+    });
+    const state = conversationReducer(assigned, {
+      type: 'SERVER_EVENT_RECEIVED', event: targetEvent
+    });
+    expect(state.pageIdentity).toBeNull();
+    expect(state.activeTarget?.targetId).toBe('target-1');
+  });
+
   it('새 target이 이전 target을 교체하고 stale·duplicate event를 무시한다', () => {
     const state = withTarget();
     const replaced = conversationReducer(state, { type: 'SERVER_EVENT_RECEIVED', event: {

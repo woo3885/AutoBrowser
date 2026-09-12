@@ -81,7 +81,10 @@ function applyServerEvent(state: ConversationState, event: ConversationServerEve
   };
 
   if (event.eventType === 'OVERLAY_TARGET') {
-    if (state.pageIdentity !== event.pageIdentity) return state;
+    // Injected bridges draw over the local page and must match its identity.
+    // A directly opened Demo has no identity, so the target is rendered over
+    // the same session's remote Playwright frame instead.
+    if (state.pageIdentity !== null && state.pageIdentity !== event.pageIdentity) return state;
     if (isProtectedWorkflowStatus(state.workflowStatus) ||
         isProtectedWorkflowStatus(event.workflowStatus)) {
       return { ...state, ...common };

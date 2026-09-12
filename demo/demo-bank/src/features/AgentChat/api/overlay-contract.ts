@@ -150,6 +150,23 @@ export function parseOverlayTargetEvent(payload: unknown, context: OverlayParseC
   } : null;
 }
 
+/** Parses an overlay for the remote Playwright frame. Unlike an overlay drawn
+ * over the local page, its geometry belongs to the streamed browser viewport,
+ * so it must not be compared with window.innerWidth/window.innerHeight. */
+export function parseRemoteOverlayTargetEvent(
+  payload: unknown,
+  sessionId: string
+): OverlayTargetEvent | null {
+  const item = record(payload);
+  const viewport = item ? parseViewport(item.viewport) : null;
+  if (!item || !viewport || item.sessionId !== sessionId || !safeId(item.pageIdentity)) return null;
+  return parseOverlayTargetEvent(item, {
+    sessionId,
+    pageIdentity: item.pageIdentity,
+    viewport
+  });
+}
+
 export function overlayTargetFromEvent(event: OverlayTargetEvent): PublicOverlayTarget {
   return { ...event, createdAt: event.occurredAt, consumedAt: null };
 }
@@ -165,6 +182,15 @@ export function parseOverlayClearEvent(payload: unknown, context: Pick<OverlayPa
   return item as unknown as OverlayClearEvent;
 }
 
+export function parseRemoteOverlayClearEvent(
+  payload: unknown,
+  sessionId: string
+): OverlayClearEvent | null {
+  const item = record(payload);
+  if (!item || item.sessionId !== sessionId || !safeId(item.pageIdentity)) return null;
+  return parseOverlayClearEvent(item, { sessionId, pageIdentity: item.pageIdentity });
+}
+
 export function parseUserActionObservedEvent(payload: unknown, context: Pick<OverlayParseContext, 'sessionId' | 'pageIdentity'>): UserActionObservedEvent | null {
   const item = record(payload);
   const keys = ['eventId', 'eventSequence', 'eventType', 'sessionId', 'workflowStatus',
@@ -177,6 +203,15 @@ export function parseUserActionObservedEvent(payload: unknown, context: Pick<Ove
       !safeId(item.sourceSnapshotId) || !safeId(item.resultingSnapshotId) ||
       item.status !== 'DOM_CHANGE_CONFIRMED') return null;
   return item as unknown as UserActionObservedEvent;
+}
+
+export function parseRemoteUserActionObservedEvent(
+  payload: unknown,
+  sessionId: string
+): UserActionObservedEvent | null {
+  const item = record(payload);
+  if (!item || item.sessionId !== sessionId || !safeId(item.pageIdentity)) return null;
+  return parseUserActionObservedEvent(item, { sessionId, pageIdentity: item.pageIdentity });
 }
 
 export function readDemoAgentBridge(value: unknown): DemoAgentBridgeBinding | null {

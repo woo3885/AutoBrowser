@@ -91,7 +91,7 @@ export function createConversationTransport(options: {
             sessionId: nextSessionId,
             pageIdentity,
             viewport: { width: window.innerWidth, height: window.innerHeight }
-          } : undefined);
+          } : undefined, pageIdentity ? undefined : nextSessionId);
           if (!event || event.sessionId !== nextSessionId) {
             options.callbacks.onSafeError();
             return;

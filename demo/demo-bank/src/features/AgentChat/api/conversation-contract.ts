@@ -8,6 +8,9 @@ import type {
 import {
   parseOverlayClearEvent,
   parseOverlayTargetEvent,
+  parseRemoteOverlayClearEvent,
+  parseRemoteOverlayTargetEvent,
+  parseRemoteUserActionObservedEvent,
   parseUserActionObservedEvent,
   type OverlayParseContext
 } from './overlay-contract';
@@ -141,17 +144,24 @@ export function parseConversationSnapshot(payload: unknown): ConversationSnapsho
 
 export function parseConversationEvent(
   payload: unknown,
-  overlayContext?: OverlayParseContext
+  overlayContext?: OverlayParseContext,
+  remoteSessionId?: string
 ): ConversationServerEvent | null {
   const item = record(payload);
   if (item?.eventType === 'OVERLAY_TARGET') {
-    return overlayContext ? parseOverlayTargetEvent(item, overlayContext) : null;
+    return overlayContext
+      ? parseOverlayTargetEvent(item, overlayContext)
+      : remoteSessionId ? parseRemoteOverlayTargetEvent(item, remoteSessionId) : null;
   }
   if (item?.eventType === 'OVERLAY_CLEAR') {
-    return overlayContext ? parseOverlayClearEvent(item, overlayContext) : null;
+    return overlayContext
+      ? parseOverlayClearEvent(item, overlayContext)
+      : remoteSessionId ? parseRemoteOverlayClearEvent(item, remoteSessionId) : null;
   }
   if (item?.eventType === 'USER_ACTION_OBSERVED') {
-    return overlayContext ? parseUserActionObservedEvent(item, overlayContext) : null;
+    return overlayContext
+      ? parseUserActionObservedEvent(item, overlayContext)
+      : remoteSessionId ? parseRemoteUserActionObservedEvent(item, remoteSessionId) : null;
   }
   if (!item || !text(item.eventId, 128) || !positive(item.eventSequence) ||
       !text(item.sessionId, 128) || !status(item.workflowStatus) ||

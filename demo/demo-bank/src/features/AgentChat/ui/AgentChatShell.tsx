@@ -7,6 +7,7 @@ import { useDomTargetOverlay } from '../hooks/use-dom-target-overlay';
 import { CHAT_SENSITIVE_ERROR } from '../model/chat-message-policy';
 import AgentChatPanel from './AgentChatPanel';
 import DomTargetOverlay from './DomTargetOverlay';
+import RemoteBrowserViewer from './RemoteBrowserViewer';
 import '../styles/agent-chat.css';
 
 interface AgentChatShellProps extends Omit<AgentConversationDependencies, 'onSubmitRequest'> {
@@ -53,6 +54,13 @@ export default function AgentChatShell(props: AgentChatShellProps) {
         </button>
         {isOpen ? (
           <div id="agent-chat-panel-content">
+            {state.sessionId && state.pageIdentity === null ? (
+              <RemoteBrowserViewer
+                sessionId={state.sessionId}
+                target={state.activeTarget}
+                backendBaseUrl={props.backendBaseUrl ?? import.meta.env.VITE_BACKEND_BASE_URL ?? 'http://127.0.0.1:8080'}
+              />
+            ) : null}
             <AgentChatPanel
               value={state.draft}
               messages={state.messages}
@@ -72,7 +80,7 @@ export default function AgentChatShell(props: AgentChatShellProps) {
           </div>
         ) : null}
       </aside>
-      {protection.canShowOverlay && state.activeTarget ? (
+      {protection.canShowOverlay && state.pageIdentity !== null && state.activeTarget ? (
         <DomTargetOverlay target={state.activeTarget} observationPhase={state.observationPhase} />
       ) : null}
     </>
