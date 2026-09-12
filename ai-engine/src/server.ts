@@ -6,7 +6,7 @@ import {
   SafetyBoundConversationModel,
 } from "./conversation/geminiConversation.model.js";
 
-const PORT = Number(process.env.AI_ENGINE_PORT ?? 3001);
+const PORT = Number(process.env.PORT ?? process.env.AI_ENGINE_PORT ?? 3001);
 
 const conversationModel = new SafetyBoundConversationModel(new GeminiConversationModel(
   async ({ prompt }) => {
