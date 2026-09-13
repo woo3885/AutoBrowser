@@ -315,8 +315,11 @@ export default function App() {
       return;
     }
     try {
-      const granted = await chrome.permissions.request({ permissions: ['audioCapture'] });
-      if (!granted) throw new Error('음성 입력을 사용하려면 마이크 권한이 필요합니다.');
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('이 Chrome 환경에서는 마이크 접근을 지원하지 않습니다.');
+      }
+      const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
+      microphone.getTracks().forEach((track) => track.stop());
       const recognition = new SpeechRecognition();
       recognition.lang = 'ko-KR';
       recognition.continuous = false;

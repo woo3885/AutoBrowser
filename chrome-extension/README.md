@@ -6,7 +6,7 @@ Side Panel은 React로 구현되어 있으며 다음 기능을 제공합니다.
 
 - 시스템 설정을 따르는 라이트/다크 모드와 수동 테마 전환
 - 페이지 읽기, AI 판단, 동작 실행, 사용자 확인 단계 표시
-- 한국어 음성 인식 후 전송 전 입력창 검토
+- Web Speech API 기반 한국어 음성 인식 후 전송 전 입력창 검토
 
 ## 빌드
 
@@ -29,6 +29,7 @@ npm run build
 6. 설정에서 Railway Backend 공개 주소를 저장합니다. `https://`를 생략하고
    `backend-production.up.railway.app`처럼 도메인만 입력해도 됩니다.
 7. 패널에 **현재 사이트 연결**이 표시되면 버튼을 누르고 사이트 접근 권한을 허용합니다.
+8. 음성 입력을 처음 사용할 때 Chrome이 표시하는 마이크 권한을 허용합니다.
 
 UI 소스를 수정한 뒤에는 `npm run build`를 실행하고 `chrome://extensions`에서
 AutoBrowser의 새로고침 버튼을 눌러야 변경사항이 반영됩니다.
