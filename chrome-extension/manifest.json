@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "AutoBrowser",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "현재 Chrome 탭을 이해하고 안전한 동작을 수행하는 AI 브라우저 도우미",
   "minimum_chrome_version": "116",
   "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
+  "optional_permissions": ["audioCapture"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "service-worker.js",
@@ -14,6 +15,6 @@
     "default_title": "AutoBrowser 열기"
   },
   "side_panel": {
-    "default_path": "sidepanel.html"
+    "default_path": "dist/index.html"
   }
 }

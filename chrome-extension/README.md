@@ -2,6 +2,23 @@
 
 Viewer 없이 사용자가 보고 있는 Chrome 탭에서 직접 동작하는 Manifest V3 확장 프로그램입니다.
 
+Side Panel은 React로 구현되어 있으며 다음 기능을 제공합니다.
+
+- 시스템 설정을 따르는 라이트/다크 모드와 수동 테마 전환
+- 페이지 읽기, AI 판단, 동작 실행, 사용자 확인 단계 표시
+- 한국어 음성 인식 후 전송 전 입력창 검토
+
+## 빌드
+
+```powershell
+cd C:\Project\chrome-extension
+npm install
+npm run test
+npm run build
+```
+
+빌드 결과는 `dist`에 생성되며 루트 `manifest.json`이 `dist/index.html`을 Side Panel로 사용합니다.
+
 ## 로컬 설치
 
 1. Chrome에서 `chrome://extensions`를 엽니다.
@@ -12,6 +29,9 @@ Viewer 없이 사용자가 보고 있는 Chrome 탭에서 직접 동작하는 Ma
 6. 설정에서 Railway Backend 공개 주소를 저장합니다. `https://`를 생략하고
    `backend-production.up.railway.app`처럼 도메인만 입력해도 됩니다.
 7. 패널에 **현재 사이트 연결**이 표시되면 버튼을 누르고 사이트 접근 권한을 허용합니다.
+
+UI 소스를 수정한 뒤에는 `npm run build`를 실행하고 `chrome://extensions`에서
+AutoBrowser의 새로고침 버튼을 눌러야 변경사항이 반영됩니다.
 
 Backend는 `POST /api/v1/extension/sessions` 계약을 제공해야 합니다. 확장 프로그램은
 비밀번호, OTP, 카드번호 자동 입력과 최종 실행 동작을 로컬에서 차단합니다.
