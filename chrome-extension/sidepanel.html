@@ -20,7 +20,10 @@
       <small>Railway Backend의 공개 HTTPS 주소를 입력하세요.</small>
     </section>
     <main id="messages" aria-live="polite"></main>
-    <div id="status" role="status">확장 프로그램 아이콘을 누른 현재 탭에서 작동합니다.</div>
+    <div class="status-row">
+      <div id="status" role="status">확장 프로그램 아이콘을 누른 현재 탭에서 작동합니다.</div>
+      <button id="connect-site" type="button" hidden>현재 사이트 연결</button>
+    </div>
     <form id="composer">
       <textarea id="message" rows="3" maxlength="500" placeholder="현재 페이지에서 원하는 작업을 입력하세요"></textarea>
       <button id="send" type="submit">전송</button>

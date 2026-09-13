@@ -10,7 +10,8 @@ const ui = {
   settings: document.querySelector("#settings"),
   settingsToggle: document.querySelector("#settings-toggle"),
   backendUrl: document.querySelector("#backend-url"),
-  saveSettings: document.querySelector("#save-settings")
+  saveSettings: document.querySelector("#save-settings"),
+  connectSite: document.querySelector("#connect-site")
 };
 
 let busy = false;
@@ -18,6 +19,7 @@ let activeTabId = null;
 let sessionId = null;
 let lastSnapshot = null;
 let automaticActions = 0;
+let siteConnected = false;
 
 function pageIdentity(snapshot) {
   return `${activeTabId}:${snapshot.page.url}`.slice(0, 512);
@@ -26,6 +28,11 @@ function pageIdentity(snapshot) {
 function setStatus(text, error = false) {
   ui.status.textContent = text;
   ui.status.classList.toggle("error", error);
+}
+
+function setSiteConnected(value) {
+  siteConnected = value;
+  ui.connectSite.hidden = value;
 }
 
 function appendMessage(role, text) {
@@ -51,17 +58,36 @@ async function runtime(message) {
 }
 
 async function currentSnapshot() {
-  const response = await runtime({
-    type: "AUTOBROWSER_TAB_COMMAND",
-    command: { type: "AUTOBROWSER_SNAPSHOT" }
-  });
+  let response;
+  try {
+    response = await runtime({
+      type: "AUTOBROWSER_TAB_COMMAND",
+      command: { type: "AUTOBROWSER_SNAPSHOT" }
+    });
+  } catch (error) {
+    setSiteConnected(false);
+    throw error;
+  }
   activeTabId = response.tabId;
   if (response.result?.error || !response.result?.data) {
     throw new Error(response.result?.error || "현재 페이지를 읽지 못했습니다.");
   }
   lastSnapshot = response.result.data;
+  setSiteConnected(true);
   ui.title.textContent = lastSnapshot.page.title;
   return lastSnapshot;
+}
+
+async function connectCurrentSite() {
+  const granted = await chrome.permissions.request({
+    origins: ["https://*/*", "http://*/*"]
+  });
+  if (!granted) throw new Error("현재 웹사이트를 분석하려면 사이트 접근 권한이 필요합니다.");
+  const tab = await runtime({ type: "AUTOBROWSER_ACTIVE_TAB" });
+  activeTabId = tab.tabId;
+  ui.title.textContent = tab.title || tab.url || "현재 Chrome 탭";
+  setSiteConnected(true);
+  setStatus("현재 탭과 연결됨");
 }
 
 async function backend(path, body) {
@@ -127,6 +153,7 @@ async function submit(content) {
   appendMessage("user", content);
   setStatus("현재 페이지 분석 중…");
   try {
+    if (!siteConnected) await connectCurrentSite();
     const snapshot = await currentSnapshot();
     const request = {
       requestId: `ext-request-${crypto.randomUUID()}`,
@@ -190,6 +217,18 @@ ui.saveSettings.addEventListener("click", async () => {
   }
 });
 
+ui.connectSite.addEventListener("click", async () => {
+  ui.connectSite.disabled = true;
+  try {
+    await connectCurrentSite();
+  } catch (error) {
+    setSiteConnected(false);
+    setStatus(error instanceof Error ? error.message : "현재 사이트에 연결하지 못했습니다.", true);
+  } finally {
+    ui.connectSite.disabled = false;
+  }
+});
+
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== "AUTOBROWSER_GUIDED_ACTION_RELAY" ||
       message.tabId !== activeTabId || !sessionId || busy) return;
@@ -216,11 +255,13 @@ chrome.runtime.onMessage.addListener((message) => {
   try {
     const tab = await runtime({ type: "AUTOBROWSER_ACTIVE_TAB" });
     activeTabId = tab.tabId;
+    setSiteConnected(true);
     ui.title.textContent = tab.title || tab.url;
     const saved = await chrome.storage.session.get(`session:${activeTabId}`);
     sessionId = saved[`session:${activeTabId}`] || null;
     setStatus(sessionId ? "기존 대화 세션과 연결됨" : "현재 탭과 연결됨");
   } catch (error) {
+    setSiteConnected(false);
     setStatus(error instanceof Error ? error.message : "현재 탭에 연결하지 못했습니다.", true);
   }
 })();
