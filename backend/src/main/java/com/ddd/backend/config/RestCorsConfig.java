@@ -27,6 +27,33 @@ public class RestCorsConfig
                                 String[]::new
                         );
 
+        /*
+         * Unpacked extensions receive an installation-specific ID, so their
+         * Origin cannot be listed in a Railway environment variable ahead of
+         * time. Keep this pattern scoped to the extension-only API. It does
+         * not enable credentials or relax CORS for the existing API surface.
+         */
+        registry.addMapping(
+                        "/api/v1/extension/**"
+                )
+                .allowedOriginPatterns(
+                        "chrome-extension://*"
+                )
+                .allowedMethods(
+                        "POST",
+                        "OPTIONS"
+                )
+                .allowedHeaders(
+                        "Content-Type",
+                        "Accept"
+                )
+                .allowCredentials(
+                        false
+                )
+                .maxAge(
+                        3600
+                );
+
         registry.addMapping(
                         "/api/**"
                 )
