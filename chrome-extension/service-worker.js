@@ -2,8 +2,12 @@ import { normalizeBackendUrl } from "./url-utils.js";
 
 const DEFAULT_BACKEND_URL = "http://127.0.0.1:8080";
 
+// The floating React panel runs as an isolated content script and keeps its
+// per-tab conversation id in extension session storage.
+chrome.storage.session.setAccessLevel({ accessLevel: "TRUSTED_AND_UNTRUSTED_CONTEXTS" })
+  .catch((error) => console.warn("AutoBrowser session storage access could not be configured", error));
+
 chrome.runtime.onInstalled.addListener(async () => {
-  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   const stored = await chrome.storage.local.get("backendUrl");
   if (!stored.backendUrl) await chrome.storage.local.set({ backendUrl: DEFAULT_BACKEND_URL });
 });
@@ -15,20 +19,41 @@ async function activeTab() {
 }
 
 async function ensureContentScript(tabId) {
+  let analyzerReady = false;
+  let panelReady = false;
   try {
     const response = await chrome.tabs.sendMessage(tabId, { type: "AUTOBROWSER_PING" });
-    if (response?.ok) return;
+    analyzerReady = response?.ok === true;
+    panelReady = response?.panelReady === true;
   } catch {
-    // The content script is injected below.
+    // Required scripts are injected below.
   }
   try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ["content-script.js"] });
+    if (!analyzerReady) {
+      await chrome.scripting.executeScript({ target: { tabId }, files: ["content-script.js"] });
+    }
+    if (!panelReady) {
+      await chrome.scripting.executeScript({ target: { tabId }, files: ["dist/floating-panel.js"] });
+    }
   } catch {
     throw new Error(
       "현재 탭에 접근할 수 없습니다. 일반 HTTP/HTTPS 웹사이트를 연 뒤 AutoBrowser 아이콘을 다시 눌러 주세요."
     );
   }
+  return { panelReady };
 }
+
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab.id) return;
+  try {
+    const { panelReady } = await ensureContentScript(tab.id);
+    if (panelReady) {
+      await chrome.tabs.sendMessage(tab.id, { type: "AUTOBROWSER_TOGGLE_PANEL" });
+    }
+  } catch (error) {
+    console.warn("AutoBrowser panel could not be opened", error);
+  }
+});
 
 async function backendRequest(path, body) {
   const stored = await chrome.storage.local.get("backendUrl");
@@ -47,7 +72,8 @@ async function backendRequest(path, body) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "AUTOBROWSER_GUIDED_ACTION") {
-    chrome.runtime.sendMessage({
+    if (!sender.tab?.id) return false;
+    chrome.tabs.sendMessage(sender.tab.id, {
       type: "AUTOBROWSER_GUIDED_ACTION_RELAY",
       tabId: sender.tab?.id,
       snapshotId: message.snapshotId

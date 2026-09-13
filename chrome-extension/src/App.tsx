@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LinkIcon, MicIcon, MonitorIcon, MoonIcon, SendIcon, SettingsIcon, SparkIcon, SunIcon
+  CloseIcon, LinkIcon, MicIcon, MinimizeIcon, MonitorIcon, MoonIcon, SendIcon,
+  SettingsIcon, SparkIcon, SunIcon
 } from './icons';
 import {
   PROGRESS_STEPS, activeProgressStep, nextTheme, normalizeBackendUrl,
@@ -77,7 +78,12 @@ function ProgressRail({ phase }: { phase: ProgressPhase }) {
   </section>;
 }
 
-export default function App() {
+interface AppProps {
+  onClose?: () => void;
+  onMinimize?: () => void;
+}
+
+export default function App({ onClose, onMinimize }: AppProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'welcome', role: 'ai',
     text: '안녕하세요. 현재 페이지에서 원하는 작업을 말씀해 주세요.'
@@ -104,10 +110,6 @@ export default function App() {
 
   const effectiveTheme = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme;
   const themeLabel = theme === 'system' ? '시스템' : theme === 'dark' ? '다크' : '라이트';
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = effectiveTheme;
-  }, [effectiveTheme]);
 
   useEffect(() => {
     const media = matchMedia('(prefers-color-scheme: dark)');
@@ -409,7 +411,7 @@ export default function App() {
 
   const connectionLabel = useMemo(() => siteConnected ? '페이지 연결됨' : '연결 필요', [siteConnected]);
 
-  return <div className="app-shell">
+  return <div className="app-shell" data-theme={effectiveTheme}>
     <header className="app-header">
       <div className="brand-mark"><SparkIcon /></div>
       <div className="brand-copy">
@@ -424,6 +426,12 @@ export default function App() {
           onClick={() => setSettingsOpen((open) => !open)} title="설정">
           <SettingsIcon />
         </button>
+        {onMinimize && <button className="icon-button" onClick={onMinimize} title="최소화">
+          <MinimizeIcon />
+        </button>}
+        {onClose && <button className="icon-button" onClick={onClose} title="닫기">
+          <CloseIcon />
+        </button>}
       </div>
     </header>
 

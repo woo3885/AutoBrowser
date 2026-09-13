@@ -11,12 +11,11 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false,
-    rollupOptions: {
-      output: {
-        entryFileNames: 'assets/sidepanel.js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name][extname]'
-      }
+    lib: {
+      entry: 'src/floating.tsx',
+      name: 'AutoBrowserFloatingPanel',
+      formats: ['iife'],
+      fileName: () => 'floating-panel.js'
     }
   }
 });

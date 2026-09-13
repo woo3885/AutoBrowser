@@ -1,4 +1,4 @@
-:root {
+.app-shell {
   font-family: Inter, Pretendard, 'Noto Sans KR', system-ui, sans-serif;
   color: #162033;
   background: #f4f7fb;
@@ -19,7 +19,7 @@
   --shadow: 0 10px 30px rgb(31 42 68 / 8%);
 }
 
-:root[data-theme='dark'] {
+.app-shell[data-theme='dark'] {
   color: #e9edf7;
   background: #10131a;
   --bg: #10131a;
@@ -38,14 +38,13 @@
   --shadow: 0 12px 32px rgb(0 0 0 / 28%);
 }
 
-* { box-sizing: border-box; }
-html, body, #root { min-width: 320px; width: 100%; height: 100%; margin: 0; }
-body { overflow: hidden; background: var(--bg); }
-button, input, textarea { font: inherit; }
-button { color: inherit; }
+.app-shell, .app-shell * { box-sizing: border-box; }
+.app-shell button, .app-shell input, .app-shell textarea { font: inherit; }
+.app-shell button { color: inherit; }
 
 .app-shell {
   height: 100%;
+  min-width: 320px;
   display: grid;
   grid-template-rows: auto auto auto minmax(120px, 1fr) auto auto;
   background:
@@ -140,7 +139,7 @@ button { color: inherit; }
 .phase-badge { padding: 3px 7px; border-radius: 999px; color: var(--subtle); background: var(--surface-soft); font-size: 9px; }
 .phase-badge.phase-reading, .phase-badge.phase-thinking, .phase-badge.phase-executing { color: var(--primary); background: var(--primary-soft); }
 .phase-badge.phase-waiting_user { color: #b7791f; background: #fff8df; }
-:root[data-theme='dark'] .phase-badge.phase-waiting_user { color: #f3c969; background: #3c321b; }
+.app-shell[data-theme='dark'] .phase-badge.phase-waiting_user { color: #f3c969; background: #3c321b; }
 .phase-badge.phase-complete { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
 .phase-badge.phase-error { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .progress-rail { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 0; padding: 0; list-style: none; }

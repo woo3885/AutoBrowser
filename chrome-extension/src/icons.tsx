@@ -30,3 +30,11 @@ export const SendIcon = (props: SVGProps<SVGSVGElement>) => <Icon {...props}>
 
 export const LinkIcon = (props: SVGProps<SVGSVGElement>) => <Icon {...props}>
   <path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1.1" /><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1.1" /></Icon>;
+
+export const MinimizeIcon = (props: SVGProps<SVGSVGElement>) => <Icon {...props}>
+  <path d="M5 12h14" />
+</Icon>;
+
+export const CloseIcon = (props: SVGProps<SVGSVGElement>) => <Icon {...props}>
+  <path d="m6 6 12 12M18 6 6 18" />
+</Icon>;

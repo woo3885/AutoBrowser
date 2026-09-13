@@ -197,9 +197,13 @@
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "AUTOBROWSER_PING") {
-      sendResponse({ ok: true });
+      sendResponse({ ok: true, panelReady: Boolean(globalThis.__AUTOBROWSER_FLOATING_PANEL__) });
       return false;
     }
+    const supported = new Set([
+      "AUTOBROWSER_SNAPSHOT", "AUTOBROWSER_EXECUTE", "AUTOBROWSER_OVERLAY", "AUTOBROWSER_CLEAR_OVERLAY"
+    ]);
+    if (!supported.has(message?.type)) return false;
     Promise.resolve().then(() => {
       if (message?.type === "AUTOBROWSER_SNAPSHOT") return collectSnapshot();
       if (message?.type === "AUTOBROWSER_EXECUTE") return execute(message.action, message.snapshotId);
