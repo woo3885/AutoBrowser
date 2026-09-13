@@ -1,3 +1,5 @@
+import { normalizeBackendUrl } from "./url-utils.js";
+
 const DEFAULT_BACKEND_URL = "http://127.0.0.1:8080";
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -6,20 +8,9 @@ chrome.runtime.onInstalled.addListener(async () => {
   if (!stored.backendUrl) await chrome.storage.local.set({ backendUrl: DEFAULT_BACKEND_URL });
 });
 
-function normalizedBackendUrl(value) {
-  const url = new URL(value);
-  if (url.protocol !== "https:" && !(url.protocol === "http:" &&
-      (url.hostname === "127.0.0.1" || url.hostname === "localhost"))) {
-    throw new Error("Backend 주소는 HTTPS 또는 로컬 HTTP만 사용할 수 있습니다.");
-  }
-  return url.origin;
-}
-
 async function activeTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url || !/^https?:\/\//u.test(tab.url)) {
-    throw new Error("이 페이지에서는 AutoBrowser를 실행할 수 없습니다.");
-  }
+  if (!tab?.id) throw new Error("현재 Chrome 탭을 찾을 수 없습니다.");
   return tab;
 }
 
@@ -30,12 +21,18 @@ async function ensureContentScript(tabId) {
   } catch {
     // The content script is injected below.
   }
-  await chrome.scripting.executeScript({ target: { tabId }, files: ["content-script.js"] });
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["content-script.js"] });
+  } catch {
+    throw new Error(
+      "현재 탭에 접근할 수 없습니다. 일반 HTTP/HTTPS 웹사이트를 연 뒤 AutoBrowser 아이콘을 다시 눌러 주세요."
+    );
+  }
 }
 
 async function backendRequest(path, body) {
   const stored = await chrome.storage.local.get("backendUrl");
-  const baseUrl = normalizedBackendUrl(stored.backendUrl || DEFAULT_BACKEND_URL);
+  const baseUrl = normalizeBackendUrl(stored.backendUrl || DEFAULT_BACKEND_URL);
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -60,7 +57,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "AUTOBROWSER_ACTIVE_TAB") {
     activeTab().then(async (tab) => {
       await ensureContentScript(tab.id);
-      return { tabId: tab.id, url: tab.url, title: tab.title || "" };
+      return { tabId: tab.id, url: tab.url || "", title: tab.title || "" };
     }).then(sendResponse).catch((error) => sendResponse({ error: error.message }));
     return true;
   }

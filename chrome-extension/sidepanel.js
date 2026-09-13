@@ -1,3 +1,5 @@
+import { normalizeBackendUrl } from "./url-utils.js";
+
 const ui = {
   title: document.querySelector("#page-title"),
   messages: document.querySelector("#messages"),
@@ -150,16 +152,12 @@ async function submit(content) {
 }
 
 async function requestBackendPermission(rawUrl) {
-  const url = new URL(rawUrl);
-  if (url.protocol !== "https:" && !(url.protocol === "http:" &&
-      (url.hostname === "localhost" || url.hostname === "127.0.0.1"))) {
-    throw new Error("Railway HTTPS 주소 또는 로컬 Backend 주소를 입력하세요.");
-  }
-  const originPattern = `${url.origin}/*`;
+  const backendUrl = normalizeBackendUrl(rawUrl);
+  const originPattern = `${backendUrl}/*`;
   const granted = await chrome.permissions.request({ origins: [originPattern] });
   if (!granted) throw new Error("Backend 접속 권한이 필요합니다.");
-  await chrome.storage.local.set({ backendUrl: url.origin });
-  ui.backendUrl.value = url.origin;
+  await chrome.storage.local.set({ backendUrl });
+  ui.backendUrl.value = backendUrl;
 }
 
 ui.form.addEventListener("submit", (event) => {
