@@ -1,136 +1,74 @@
-# 통합 체크리스트 — develop 병합 전
+# 통합 체크리스트
 
-## 1. 공통 계약
+기준일: 2026-09-14
 
-- [ ] `contracts/api.ts` 변경 여부 확인
-- [ ] `WorkflowStatus` 값이 공통 계약과 일치
-- [ ] `BrowserActionType` 값이 공통 계약과 일치
-- [ ] REST API 요청·응답 타입 일치
-- [ ] WebSocket 이벤트 타입 일치
-- [ ] AI 요청·응답 JSON 타입 일치
-- [ ] Breaking Change 발생 시 팀 전체 공지
-- [ ] 관련 Mock 데이터와 테스트 코드 수정
-- [ ] 테스트 또는 수동 검증 결과를 PR에 기록
+Chrome Extension → Backend → AI Engine 경로를 변경할 때 사용합니다. 루트 Viewer와 Demo Bank만 바꾸는 작업에는 해당 프로젝트의 레거시 테스트를 별도로 적용합니다.
 
-## 2. Frontend & Voice — 개발자 A
+## Chrome Extension
 
-### 세션 및 화면
+- [ ] `npm test` 통과
+- [ ] `npm run build` 통과 및 `dist/floating-panel.js` 갱신
+- [ ] 번들에 `process.env` 또는 CommonJS `require()`가 남지 않음
+- [ ] `manifest.json` 버전과 권한이 변경 내용에 맞음
+- [ ] 일반 HTTP/HTTPS 탭에서 아이콘으로 패널 열기·최소화·닫기 동작
+- [ ] 페이지 새로고침과 SPA 이동 후 DOM 스냅샷 재생성
+- [ ] Backend Base URL 정규화 및 origin 권한 요청
+- [ ] 탭별 세션이 다른 탭과 섞이지 않음
+- [ ] 음성 결과가 자동 전송되지 않고 입력창에서 검토 가능
+- [ ] iframe/Canvas/Chrome 보호 페이지 제한을 사용자에게 명확히 표시
 
-- [ ] URL 입력 후 브라우저 세션 생성 요청 연결
-- [ ] 브라우저 스트림 표시 정상
-- [ ] Target Highlight 오버레이 좌표 정상
-- [ ] 화면 기준 좌표와 실제 렌더링 크기 변환 정상
-- [ ] 현재 Workflow 상태와 안내 문구 표시
+## DOM과 로컬 실행
 
-### 사용자 상호작용
+- [ ] 실제 input `value`, 쿠키, 토큰, Authorization Header를 수집하지 않음
+- [ ] 비밀번호·OTP·인증번호·카드번호 요소가 자동 입력 대상에서 제외됨
+- [ ] `elementId`가 스냅샷 범위에서만 유효함
+- [ ] `sourceSnapshotId`가 현재 스냅샷과 다르면 실행 거부
+- [ ] 대상이 존재하고 visible/enabled인지 실행 직전 재검증
+- [ ] 최종 승인 및 사용자 선택 요소를 자동 클릭하지 않음
+- [ ] `GUIDE_USER` 대상에 오버레이가 표시되고 직접 조작 후 계속 판단
 
-- [ ] 음성 또는 텍스트 요청 전달
-- [ ] `USER_DECISION_REQUIRED` 화면 표시
-- [ ] 상품·계좌·수취인·약관 선택 결과 전달
-- [ ] `SECURE_INPUT_REQUIRED` 화면 표시
-- [ ] 보안 입력 중 AI 자동화 정지 안내
-- [ ] 보안 입력 완료 신호 전달
-- [ ] `FINAL_CONFIRMATION_REQUIRED` 거래 요약 표시
-- [ ] 승인 또는 거절 결과 전달
-- [ ] `RISK_WARNING` 경고 화면 표시
-- [ ] 업무 취소 및 일시정지 요청 정상
+## Backend
 
-## 3. Backend & Automation — 개발자 B
+- [ ] Java 21에서 `gradlew test` 통과
+- [ ] `/actuator/health`, `/api/v1/hello` 정상
+- [ ] 확장 세션 생성·메시지·continue API 계약 일치
+- [ ] `/api/v1/extension/**` CORS가 `chrome-extension://*`에만 필요한 method/header를 허용
+- [ ] 사용자 메시지 길이와 정제 정책 적용
+- [ ] goal revision, request/message ID, 질문 응답 관계 검증
+- [ ] AI가 제안한 mode/action/target/snapshot 계약 검증
+- [ ] Backend 재시작·TTL 만료 시 세션 없음 오류가 안전하게 처리됨
+- [ ] AI Engine connect timeout이 request timeout보다 짧음
+- [ ] Backend request timeout이 AI 모델 timeout보다 김
 
-### 세션 및 통신
+## AI Engine
 
-- [ ] 브라우저 세션 생성 API 정상
-- [ ] URL 이동 API 정상
-- [ ] 사용자 선택 전달 API 정상
-- [ ] 최종 승인 API 정상
-- [ ] 보안 입력 완료 API 정상
-- [ ] 세션 종료 API 정상
-- [ ] WebSocket 연결 및 재연결 처리 정상
-- [ ] Binary 브라우저 프레임 전송 정상
-- [ ] 세션 TTL 및 만료 처리 정상
+- [ ] `npm run check`, `npm run build`, `npm test` 통과
+- [ ] `GEMINI_API_KEY`가 로그/응답/저장소에 노출되지 않음
+- [ ] `GEMINI_MODEL` 값이 실제 API key에서 사용 가능한 모델 ID임
+- [ ] 요청 schema와 Backend `ConversationAgentRequest` 일치
+- [ ] 모든 결정이 단일 mode 및 최대 단일 action 계약을 지킴
+- [ ] `question`, `goalPatch`, `actionCandidate`의 mode별 null 규칙 통과
+- [ ] 사용자 목표를 한 turn에서 무한 갱신하지 않음
+- [ ] 알 수 없는 요청에 페이지 기능 설명 또는 추가 질문을 반환
+- [ ] Gemini 400/429, 계약 실패, timeout이 구분된 로그와 HTTP 상태로 매핑됨
 
-### DOM 정제 및 보안
+## 안전 시나리오
 
-- [ ] 현재 DOM에서 AI 판단에 필요한 요소만 추출
-- [ ] 실제 input `value`를 AI 요청에서 제거
-- [ ] 비밀번호·OTP·주민등록번호 필드 제거 또는 마스킹
-- [ ] 계좌번호 원문을 AI에 전달하지 않음
-- [ ] 쿠키·세션 토큰·Authorization Header를 전달하지 않음
-- [ ] 민감정보 포함 화면 전체 캡처를 AI에 전달하지 않음
-- [ ] 민감정보 화면 감지 시 `SECURE_INPUT_REQUIRED` 전환
-- [ ] 보안 입력 중 AI 요청과 화면 캡처 중단
-- [ ] 세션 종료 시 임시 데이터 삭제
+- [ ] 페이지 설명 요청은 화면 변경 없이 안내 가능
+- [ ] 일반 메뉴 이동은 안전할 때만 자동 실행
+- [ ] 사용자 선택이 필요한 옵션은 강조 후 대기
+- [ ] 비밀번호·OTP 단계는 사용자 직접 입력으로 전환
+- [ ] 결제·송금·가입·최종 제출은 명시적 사용자 승인 없이 실행하지 않음
+- [ ] 위험 요청은 `RISK_WARNING` 또는 `STOP`으로 차단
+- [ ] 모델 또는 네트워크 오류가 임의 동작으로 fallback되지 않음
 
-### AI Action 검증
+## Railway 배포 후
 
-- [ ] AI가 반환한 Action이 허용 목록에 존재
-- [ ] 현재 Workflow 상태에서 실행 가능한 Action인지 검증
-- [ ] `targetElementId`가 현재 DOM에 존재
-- [ ] 대상 요소가 visible 상태
-- [ ] 대상 요소가 enabled 상태
-- [ ] 민감정보 입력 요소가 아닌지 검증
-- [ ] 사용자 선택이 필요한 약관 요소가 아닌지 검증
-- [ ] 최종 거래 버튼인지 검증
-- [ ] 최종 버튼 실행 전 사용자 승인 존재 여부 검증
-- [ ] AI 응답의 `requestId`가 현재 요청과 일치
-
-## 4. AI Engine & Integration — 개발자 C
-
-### Intent 및 Action 판단
-
-- [ ] 사용자 Intent 분류 정상
-- [ ] 금액·기간 등 명시된 정보 추출 정상
-- [ ] 사용자가 말하지 않은 금액이나 조건을 임의 추정하지 않음
-- [ ] 현재 페이지에서 다음 Target 추론 정상
-- [ ] 허용된 `BrowserActionType`만 반환
-- [ ] 존재하는 `targetElementId` 형식만 반환
-- [ ] Structured Output JSON Schema 검증 통과
-- [ ] 모든 응답에 `requestId` 포함
-- [ ] 사용자 안내 문장이 한 문장 원칙을 준수
-
-### 사용자 결정 및 보안
-
-- [ ] 상품 선택 시 `USER_DECISION_REQUIRED` 반환
-- [ ] 약관 선택 시 `USER_DECISION_REQUIRED` 반환
-- [ ] 선택 약관을 임의 동의하지 않음
-- [ ] 전체 동의 버튼을 자동 선택하지 않음
-- [ ] 민감정보 필드에서 `PAUSE_FOR_SECURE_INPUT` 반환
-- [ ] 최종 거래 단계에서 `REQUEST_FINAL_CONFIRMATION` 반환
-- [ ] 사용자 승인 전 최종 실행 Action을 반환하지 않음
-
-### 위험 요청
-
-- [ ] 안전계좌·기관 사칭 등 위험 표현 감지
-- [ ] 위험 요청 감지 시 `RISK_WARNING` 반환
-- [ ] 위험 요청 감지 시 `STOP` 반환
-- [ ] 송금 관련 추가 Action을 생성하지 않음
-- [ ] 공식 기관 또는 금융회사 확인 안내 생성
-
-## 5. E2E 시나리오
-
-### 정기예금 가입
-
-- [ ] 사용자 요청에서 금액과 기간 추출
-- [ ] 예금 메뉴 이동
-- [ ] 상품 선택 단계에서 사용자 결정 요청
-- [ ] 약관 단계에서 사용자 결정 요청
-- [ ] 비밀번호 단계에서 보안 입력 모드 전환
-- [ ] 최종 가입 내용 표시
-- [ ] 사용자 승인 후에만 가입 버튼 실행
-
-### 계좌이체
-
-- [ ] 송금 금액 추출
-- [ ] 출금 계좌를 사용자가 확인
-- [ ] 수취인을 사용자가 확인
-- [ ] 비밀번호·OTP 단계에서 자동화 중단
-- [ ] 계좌·수취인·금액 최종 요약
-- [ ] 사용자 승인 후에만 송금 버튼 실행
-
-### 보이스피싱 의심 요청
-
-- [ ] 위험 표현 감지
-- [ ] 자동화 즉시 중단
-- [ ] `RISK_WARNING` 상태 표시
-- [ ] 송금 Action 실행 차단
-- [ ] 사용자에게 위험 안내 표시
+- [ ] AI Engine `/health` 200
+- [ ] Backend `/actuator/health` 200
+- [ ] Backend private AI endpoint hostname/port/path 확인
+- [ ] 확장 설정에 Backend 공개 HTTPS **Base URL** 저장
+- [ ] `현재 페이지 설명` 요청으로 E2E 응답 확인
+- [ ] `AUTO_EXECUTE`와 `GUIDE_USER`를 각각 안전한 테스트 페이지에서 확인
+- [ ] Backend/AI Engine 로그에 API key 또는 민감 DOM이 없음
+- [ ] 여러 Backend replica를 쓸 경우 인메모리 확장 세션 전략 검토

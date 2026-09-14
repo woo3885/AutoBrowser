@@ -1,5 +1,7 @@
 # Frontend D28 고령층 접근성 점검표
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 1. 기준 origin/develop
 
 - 기준 커밋: `ffefb3c7525ec82f1440265f18daa4306bdb2c4d`

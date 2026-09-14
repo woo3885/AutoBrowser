@@ -1,5 +1,7 @@
 # 데모 금융사이트 D9 Playwright 전달 문서
 
+> **개발 이력:** 선택형 Demo Bank/Playwright 테스트 자료입니다. 표준 AutoBrowser 배포에는 Demo Bank가 필요하지 않습니다. [문서 색인](../../docs/README.md)을 우선하세요.
+
 ## 1. 목적과 실행
 
 D9은 출금 계좌를 사용자가 직접 선택한 뒤 별도 다음 Gate를 통해 수취인

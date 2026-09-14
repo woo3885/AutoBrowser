@@ -1,5 +1,7 @@
 # C 파트 이슈 목록
 
+> **개발 이력:** 초기 AI 파트 이슈 기록입니다. 현재 실행 상태와 배포 방법은 [`ai-engine/README.md`](../README.md) 및 [통합 가이드](../../docs/ai-engine-integration-guide.md)를 우선합니다.
+
 ## 목적
 
 AI Engine 및 공통 계약 작업에서 팀 합의가 필요하거나 다음 단계에서 해결해야 하는 항목을 정리한다.

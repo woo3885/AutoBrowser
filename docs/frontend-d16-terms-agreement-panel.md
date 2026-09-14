@@ -1,5 +1,7 @@
 # 프론트엔드 D16 약관 동의 패널
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목적과 상태
 
 D16은 `ScreenType: TERMS_AGREEMENT`에서 필수 약관과 선택 약관을 사용자가 각각 확인하고 직접 선택할 수 있는 공통 UI를 제공한다. 전체 업무 상태는 `WorkflowStatus: USER_DECISION_REQUIRED`이며, 약관 패널은 선택 상태만 안내한다.

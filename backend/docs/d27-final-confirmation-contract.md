@@ -1,5 +1,7 @@
 # D27 예금 가입 최종 확인 계약
 
+> **개발 이력:** 레거시 Playwright/Viewer 흐름의 당시 계약입니다. 현재 Chrome Extension 경로는 [문서 색인](../../docs/README.md), [현재 아키텍처](../../docs/CURRENT_ARCHITECTURE.md), [API 명세](../../docs/backend/api-spec.md)를 우선합니다.
+
 AI Engine은 `REQUEST_FINAL_CONFIRMATION`, `FINAL_CONFIRMATION_REQUIRED`,
 `DEPOSIT_SUBSCRIPTION`, 현재 `sourceSnapshotId`, 현재 Snapshot의
 `confirmationTargetElementId`를 반환한다. `elementId`를 포함한 일반 Action payload는 비운다.

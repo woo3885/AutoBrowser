@@ -1,5 +1,7 @@
 # 프론트 D12 Web Speech API 기반 STT 입력
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목적과 범위
 
 D12는 기존 F4 음성 제어 Placeholder를 사용자 클릭으로만 시작되는 Web Speech API 기반 STT 입력으로 교체한다. 브라우저의 중간·최종 인식 결과를 기존 `SttEvent` 계약으로 변환하지만, App 제품 흐름에는 연결하지 않는다. 실제 Intent API, WebSocket, TTS, 영구 저장, 음성 파일 저장과 금융 실행은 범위 밖이다.

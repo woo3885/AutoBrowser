@@ -1,5 +1,7 @@
 # D19 금융사기 위험 경고 패널
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목표와 상태 의미
 
 D19는 `RISK_WARNING` 상태에서 보이스피싱 또는 금융사기 가능성을 강하게 알리고, 사용자가 안전한 행동을 선택하도록 돕는 공통 UI를 제공한다. Backend의 브라우저 Action 결과 `BLOCKED`는 현재 `RISK_WARNING`으로 매핑된다. 일반 기술 오류는 D14 `WorkflowStatusPanel`의 `ERROR` 표현이 담당하며 이 패널은 오류 UI를 중복하지 않는다.

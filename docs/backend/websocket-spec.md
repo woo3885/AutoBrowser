@@ -1,5 +1,7 @@
 # 금융길잡이 AI WebSocket 명세
 
+> **레거시 Viewer 계약:** 현재 Chrome Extension 경로는 WebSocket이나 프레임 스트림을 사용하지 않고 REST `/api/v1/extension/sessions`를 사용합니다. 이 문서는 루트 Viewer 호환 및 개발 이력용입니다.
+
 ## 1. 목적
 
 백엔드 자동화 진행 상태, 사용자 선택 요청, 보안 입력 요청 및 오류 정보를 프론트엔드에 실시간으로 전달한다.

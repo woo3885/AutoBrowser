@@ -1,4 +1,6 @@
 # D15 Sanitized DOM · Target elementId 통합 규격
+
+> **버전 고정 참고 문서:** D15 당시 계약을 보존합니다. 현재 Chrome Extension 스냅샷은 `chrome-extension/content-script.js`, Backend DTO와 AI Engine의 `conversationAgent.types.ts`를 함께 기준으로 합니다.
 **문서 버전:** v1.0  
 **상태:** 확정  
 **적용 범위:** D13 ~ D16 및 AI Action 연동

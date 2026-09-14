@@ -1,5 +1,7 @@
 # D29 Day 1 대화형 Agent Backend 계약
 
+> **개발 이력:** 레거시 Playwright/Viewer 흐름의 당시 계약입니다. 현재 Chrome Extension 경로는 [문서 색인](../../docs/README.md), [현재 아키텍처](../../docs/CURRENT_ARCHITECTURE.md), [API 명세](../../docs/backend/api-spec.md)를 우선합니다.
+
 ## 결정
 
 - 3일 MVP는 Demo Bank 동일 Page widget을 사용한다.

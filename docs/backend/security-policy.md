@@ -1,5 +1,7 @@
 # 금융길잡이 AI 자동화 보안 정책
 
+> **현재 적용 범위(2026-09-14):** 정책 판단은 AI Engine과 Backend에서, 마지막 실행 차단은 Chrome Extension의 Content Script에서도 적용합니다. 레거시 Viewer 관련 표현보다 [현재 아키텍처](../CURRENT_ARCHITECTURE.md)를 우선합니다.
+
 ## 1. 기본 원칙
 
 금융길잡이 AI는 사용자의 금융업무를 보조하지만, 사용자를 대신해 중요한 금융 의사결정을 내리지 않는다.

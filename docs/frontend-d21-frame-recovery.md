@@ -1,5 +1,7 @@
 # 프론트 D21 프레임 연결 상태·복구
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목적과 범위
 
 개발자 A 메인 D21의 공식 목표는 프레임 지연·끊김·재연결을 처리하고 연결 상태와 복구 경계를 제공하는 것이다. 이번 구현은 기존 Session REST와 raw Frame WebSocket을 그대로 사용해 연결 종료를 안전하게 분류하고, 동일 Backend session의 Frame WebSocket을 다시 연결한다.

@@ -1,5 +1,7 @@
 # D26 Secure User Takeover 계약
 
+> **개발 이력:** 레거시 Playwright/Viewer 흐름의 당시 계약입니다. 현재 Chrome Extension 경로는 [문서 색인](../../docs/README.md), [현재 아키텍처](../../docs/CURRENT_ARCHITECTURE.md), [API 명세](../../docs/backend/api-spec.md)를 우선합니다.
+
 ## 지원 범위
 
 현재 구현은 **로컬 Demo/E2E 전용 headed takeover**이다. 운영 환경에서 PNG Viewer를

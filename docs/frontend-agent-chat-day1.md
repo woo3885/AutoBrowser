@@ -1,5 +1,7 @@
 # 대화형 AI 에이전트 Frontend Day 1
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [`docs/README.md`](README.md)와 [`CURRENT_ARCHITECTURE.md`](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목적과 범위
 
 Day 1은 Canvas Viewer를 주 화면으로 사용하지 않고, 실제 Demo Bank 업무

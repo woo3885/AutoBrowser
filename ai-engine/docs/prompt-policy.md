@@ -1,5 +1,7 @@
 # AI 판단 금지 및 실행 정책
 
+> **공통 안전 정책:** JSON 예시는 레거시 `/api/ai/action` 응답입니다. 현재 Chrome Extension 대화 계약은 [AI Engine 연동 가이드](../../docs/ai-engine-integration-guide.md)를 기준으로 하며 동일한 보호 원칙을 더 엄격한 mode 계약으로 적용합니다.
+
 ## 목적
 
 이 문서는 금융길잡이 AI가 직접 판단하거나 실행해서는 안 되는 항목을 정의한다.

@@ -1,320 +1,152 @@
-# 금융길잡이 AI
+# AutoBrowser
 
-금융길잡이 AI는 디지털 금융 서비스 이용에 어려움을 겪는 사용자를 위해,
-음성 또는 텍스트 요청을 기반으로 금융 웹사이트 탐색을 지원하는 서비스입니다.
+AutoBrowser는 사용자가 보고 있는 Chrome 웹페이지를 이해하고, 자연어 요청에 따라 안전한 범위의 작업을 돕는 범용 웹 에이전트입니다. 별도의 원격 Viewer를 띄우지 않고 현재 탭에 React 플로팅 패널을 주입합니다.
 
-사용자의 요청을 분석해 메뉴 이동, 버튼 클릭, 화면 안내, 일반 정보 입력 등을 수행하며,
-비밀번호·OTP 등 민감정보와 상품 선택·최종 거래 승인은 사용자가 직접 처리합니다.
+> 현재 기준: Chrome Extension `0.2.2`, Java 21 Backend, Node.js/TypeScript AI Engine
 
-현재 저장소는 React 기반 프론트엔드를 중심으로 구성되어 있으며,
-백엔드 브라우저 자동화와 AI Engine 연동을 함께 개발하고 있습니다.
+## 현재 구성
 
----
+```text
+사용자
+  └─ Chrome Extension (현재 탭의 플로팅 패널)
+       ├─ Content Script: 정제 DOM 생성, 대상 강조, 로컬 동작 실행
+       └─ Service Worker: Backend HTTPS 요청
+            └─ Backend: 세션·계약·안전 정책 검증
+                 └─ AI Engine: Gemini 기반 다음 행동 판단
+```
 
-## 기술 스택
+- **주 사용자 인터페이스:** `chrome-extension`
+- **필수 서버:** `backend`, `ai-engine`
+- **선택/레거시:** 루트 React Viewer, `demo/demo-bank`, `security-session`
+- **범용성:** 특정 Demo Bank 흐름을 미리 재생하지 않고 매 요청마다 현재 페이지의 정제된 DOM을 분석합니다.
 
-- React
-- TypeScript
-- Tailwind CSS
-- Zustand
-- Vite
-- Vitest
+## 빠른 시작
 
----
+### 1. AI Engine
 
-## 실행
-
-```bash
+```powershell
+cd C:\Project\ai-engine
 npm install
-npm run dev
+$env:GEMINI_API_KEY = "your-key"
+npm start
 ```
 
----
+기본 포트는 `3001`입니다.
 
-## 테스트
+### 2. Backend
 
-```bash
+Java 21이 필요합니다.
+
+```powershell
+cd C:\Project\backend
+.\gradlew.bat bootRun
+```
+
+기본 포트는 `8080`이며, 로컬 AI Engine의 대화 API를 자동으로 사용합니다.
+
+### 3. Chrome Extension
+
+```powershell
+cd C:\Project\chrome-extension
+npm install
 npm run test
-npm run test:watch
-npm run test:coverage
+npm run build
 ```
 
-TDD 작업 방법은 [`TDD_GUIDE.md`](TDD_GUIDE.md)를 참고하세요.
+1. Chrome에서 `chrome://extensions`를 엽니다.
+2. **개발자 모드**를 켭니다.
+3. **압축해제된 확장 프로그램을 로드합니다**에서 `chrome-extension` 폴더를 선택합니다.
+4. 일반 HTTP/HTTPS 사이트를 연 뒤 AutoBrowser 아이콘을 누릅니다.
+5. 패널의 설정에서 Backend 주소를 저장합니다. 로컬은 `http://127.0.0.1:8080`, Railway는 공개 HTTPS 주소를 사용합니다.
+6. 사이트 접근 및 마이크 권한 요청이 나타나면 필요한 범위에서 허용합니다.
 
----
+`chrome://` 페이지, Chrome Web Store 등 Chrome 보호 페이지에는 패널을 주입할 수 없습니다.
 
-## 주요 기능 모듈
+## Railway 배포
 
-### F-1 Dashboard
+표준 운영 구성은 두 서비스입니다.
 
-서비스 상태와 사용자 요청 진행 상황을 표시합니다.
+| 서비스 | Root Directory | 실행 방식 | 공개 도메인 |
+|---|---|---|---|
+| `ai-engine` | `/ai-engine` | `npm start` | Backend가 private networking을 쓰면 선택 |
+| `backend` | `/backend` | `backend/Dockerfile` | 확장 프로그램 연결을 위해 필수 |
 
-### F-2 StreamViewer
+Backend 핵심 변수:
 
-백엔드에서 전달받은 원격 브라우저 화면을 표시합니다.
-
-### F-3 SmartOverlay
-
-AI가 선택한 화면 요소의 위치를 강조하고 안내 메시지를 표시합니다.
-
-### F-4 VoiceController
-
-사용자의 음성 입력과 음성 안내 기능을 처리합니다.
-
-### F-5 MainController
-
-프론트엔드 상태와 주요 기능 모듈을 통합 관리합니다.
-
----
-
-## MVP 시나리오
-
-### 정기예금 가입
-
-1. 사용자의 예금 가입 요청 분석
-2. 예금 메뉴 자동 탐색
-3. 가입 기간과 금액 입력
-4. 상품 후보 안내
-5. 사용자가 상품 선택
-6. 약관 안내 및 사용자 선택
-7. 민감정보 입력 단계에서 자동화 일시정지
-8. 사용자 최종 승인 후 가입 실행
-
-### 계좌이체
-
-1. 사용자의 계좌이체 요청 분석
-2. 이체 메뉴 자동 탐색
-3. 출금 계좌와 수취인 후보 안내
-4. 사용자가 계좌와 수취인 확인
-5. 송금 금액 입력
-6. 비밀번호·OTP 입력 단계에서 자동화 일시정지
-7. 거래 내용 요약
-8. 사용자 최종 승인 후 송금 실행
-
-### 보이스피싱 의심 요청 차단
-
-다음과 같은 위험 표현이 감지되면 금융 자동화를 중단합니다.
-
-> 검찰에서 안전계좌로 돈을 보내라고 했어.
-
-처리 과정:
-
-1. 위험 표현 감지
-2. `RISK_WARNING` 상태 전환
-3. 송금 관련 Action 차단
-4. 보이스피싱 가능성 안내
-5. 금융회사 또는 기관의 공식 연락처 확인 안내
-
----
-
-## AI와 사용자의 역할
-
-### AI가 수행하는 작업
-
-- 메뉴 탐색
-- 버튼 클릭
-- 화면 스크롤
-- 페이지 이동
-- 일반 정보 입력
-- 사용자가 말한 금액과 기간 입력
-- 드롭다운 선택
-- 사용자 안내 메시지 생성
-
-### 사용자가 직접 수행하는 작업
-
-- 금융상품 선택
-- 출금 계좌 선택
-- 수취인 선택
-- 약관 동의 여부 선택
-- 비밀번호 및 OTP 입력
-- 최종 거래 승인
-
----
-
-## 보안 원칙
-
-다음 정보는 AI Engine 또는 외부 LLM에 전달하지 않습니다.
-
-- 입력창의 실제 `value`
-- 비밀번호
-- 계좌 비밀번호
-- OTP 및 문자 인증번호
-- 주민등록번호
-- 계좌번호 원문
-- 쿠키
-- 세션 토큰
-- Authorization Header
-- 금융정보가 포함된 화면 이미지
-
-AI는 다음 행동을 임의로 수행할 수 없습니다.
-
-- 선택 약관 자동 동의
-- 전체 동의 버튼 자동 클릭
-- 금융상품 최종 선택
-- 사용자가 말하지 않은 금액 추정
-- 비밀번호 또는 OTP 생성·입력
-- 사용자 승인 전 가입·송금·해지 실행
-
----
-
-## 공통 Workflow 상태
-
-```text
-SESSION_CREATED
-PAGE_LOADING
-AI_EXECUTING
-USER_DECISION_REQUIRED
-SECURE_INPUT_REQUIRED
-FINAL_CONFIRMATION_REQUIRED
-ADDITIONAL_INFORMATION_REQUIRED
-RISK_WARNING
-COMPLETED
-CANCELLED
-ERROR
-TERMINATED
+```env
+DDD_AI_ENGINE_ENABLED=true
+AI_ENGINE_ENDPOINT=http://${{ai-engine.RAILWAY_PRIVATE_DOMAIN}}:${{ai-engine.PORT}}/api/ai/action
+AI_ENGINE_CONVERSATION_ENDPOINT=http://${{ai-engine.RAILWAY_PRIVATE_DOMAIN}}:${{ai-engine.PORT}}/api/ai/conversation/decision
+AI_ENGINE_CONNECT_TIMEOUT=3s
+AI_ENGINE_REQUEST_TIMEOUT=40s
 ```
 
-| 상태 | 의미 |
-|---|---|
-| `SESSION_CREATED` | 브라우저 세션 생성 완료 |
-| `PAGE_LOADING` | 페이지 로딩 중 |
-| `AI_EXECUTING` | AI 자동화 수행 중 |
-| `USER_DECISION_REQUIRED` | 사용자 선택 필요 |
-| `SECURE_INPUT_REQUIRED` | 민감정보 직접 입력 필요 |
-| `FINAL_CONFIRMATION_REQUIRED` | 최종 승인 필요 |
-| `ADDITIONAL_INFORMATION_REQUIRED` | 추가 정보 입력 필요 |
-| `RISK_WARNING` | 위험 가능성 감지 |
-| `COMPLETED` | 업무 완료 |
-| `CANCELLED` | 사용자가 취소 |
-| `ERROR` | 처리 오류 |
-| `TERMINATED` | 세션 종료 완료 |
+AI Engine 핵심 변수:
 
----
-
-## 공통 Browser Action
-
-```text
-NONE
-CLICK
-TYPE
-SELECT
-SCROLL
-PRESS_KEY
-GO_BACK
-REFRESH
-WAIT
-WAIT_FOR_USER
-PAUSE_FOR_SECURE_INPUT
-REQUEST_FINAL_CONFIRMATION
-STOP
+```env
+GEMINI_API_KEY=your-secret
+GEMINI_MODEL=gemini-3.5-flash
+AI_ENGINE_MODEL_TIMEOUT_MS=30000
 ```
 
-AI가 반환한 Action은 바로 실행하지 않습니다.
+Railway가 주입하는 `PORT`는 두 서비스 모두 코드에서 처리합니다. Demo Bank와 루트 Frontend는 확장 프로그램 방식에 필요하지 않으므로 배포하지 않아도 됩니다. 전체 절차는 [배포 가이드](docs/DEPLOYMENT.md)를 참고하세요.
 
-백엔드는 다음 항목을 검증한 후 Action을 실행합니다.
+## 동작과 안전 경계
 
-- 허용된 Action인지
-- 현재 Workflow 상태에 맞는지
-- 대상 요소가 DOM에 존재하는지
-- 대상 요소가 표시 및 활성화 상태인지
-- 민감정보 입력 요소가 아닌지
-- 사용자 선택이 필요한 약관 요소가 아닌지
-- 사용자 승인 전 최종 거래 버튼이 아닌지
-- AI 응답의 요청 ID가 일치하는지
+AI Engine은 최신 정제 DOM과 사용자 목표를 바탕으로 한 번에 하나의 결정을 반환합니다.
 
----
+- `AUTO_EXECUTE`: 일반 버튼 클릭이나 비민감 텍스트 입력
+- `GUIDE_USER`: 사용자가 직접 조작할 요소를 페이지에서 강조
+- `ASK_USER`, `INFORM_USER`: 추가 질문 또는 페이지 설명
+- `SECURE_INPUT_REQUIRED`: 비밀번호·OTP 등 직접 입력
+- `FINAL_CONFIRMATION_REQUIRED`: 결제·송금·가입 등 최종 승인
+- `RISK_WARNING`, `STOP`: 위험하거나 허용되지 않은 요청 중단
+
+확장 프로그램은 비밀번호, OTP, 카드번호 같은 민감 입력과 최종 실행 요소를 로컬에서도 차단합니다. 입력값, 쿠키, 세션 토큰, Authorization Header 또는 전체 화면 이미지를 Gemini에 보내지 않습니다.
 
 ## 프로젝트 구조
 
-```text
-ddd
-├── .github
-├── ai-engine
-├── backend
-├── contracts
-├── docs
-├── security-session
-├── src
-├── TDD_GUIDE.md
-├── index.html
-├── package.json
-├── tailwind.config.ts
-├── tsconfig.json
-├── vite.config.ts
-└── README.md
+| 경로 | 상태 | 역할 |
+|---|---|---|
+| `chrome-extension` | 현재 운영 경로 | Chrome 플로팅 패널, DOM 정제, 로컬 작업 실행 |
+| `backend` | 현재 운영 경로 | 확장 세션, AI 계약 검증, 안전 정책, 레거시 Playwright API |
+| `ai-engine` | 현재 운영 경로 | Gemini 호출, 구조화 판단, 모델 응답 검증 |
+| `contracts` | 공유 | 공통 타입과 스키마 |
+| `docs` | 공유 | 현재 운영 문서 및 과거 개발 기록 |
+| `src` | 레거시/참고 | 원격 Viewer 방식의 루트 React Frontend |
+| `demo/demo-bank` | 선택/레거시 | 과거 E2E용 Mock 금융 사이트 |
+| `security-session` | 레거시 | 초기 보안 모듈 설계 자리표시자 |
+
+## 테스트
+
+```powershell
+# Chrome Extension
+cd chrome-extension
+npm test
+npm run build
+
+# AI Engine
+cd ..\ai-engine
+npm test
+npm run check
+npm run build
+
+# Backend
+cd ..\backend
+.\gradlew.bat test
 ```
 
-| 경로 | 역할 |
-|---|---|
-| `src` | React 프론트엔드 소스 |
-| `backend` | 세션 관리 및 브라우저 자동화 |
-| `ai-engine` | 사용자 Intent 및 다음 Action 판단 |
-| `security-session` | 민감정보 보호와 세션 보안 처리 |
-| `contracts` | 프론트·백엔드·AI 공통 API 계약 |
-| `docs` | 개발 규격과 협업 문서 |
-| `.github` | Pull Request 템플릿 등 GitHub 설정 |
+루트 Viewer와 Demo Bank를 수정할 때만 각 디렉터리의 별도 테스트를 실행합니다.
 
----
+## 문서
 
-## 팀 분업 개발
+- [문서 색인과 최신/레거시 구분](docs/README.md)
+- [현재 아키텍처](docs/CURRENT_ARCHITECTURE.md)
+- [Railway 배포](docs/DEPLOYMENT.md)
+- [통합 체크리스트](docs/INTEGRATION_CHECKLIST.md)
+- [문제 해결](docs/TROUBLESHOOTING.md)
+- [Chrome Extension](chrome-extension/README.md)
+- [Backend API](docs/backend/api-spec.md)
+- [AI Engine 연동](docs/ai-engine-integration-guide.md)
 
-- 역할 분담 가이드: [`docs/TEAM_SPLIT_GUIDE.md`](docs/TEAM_SPLIT_GUIDE.md)
-- 통합 체크리스트: [`docs/INTEGRATION_CHECKLIST.md`](docs/INTEGRATION_CHECKLIST.md)
-- 브랜치 빠른 시작: [`docs/BRANCH_QUICKSTART_3P.md`](docs/BRANCH_QUICKSTART_3P.md)
-- Git 브랜치 전략: [`docs/GIT_BRANCH_STRATEGY.md`](docs/GIT_BRANCH_STRATEGY.md)
-- 공통 API 계약: [`contracts/api.ts`](contracts/api.ts)
-
----
-
-## 개발자 역할
-
-### 개발자 A — Frontend & Voice
-
-- Dashboard 구현
-- 브라우저 화면 표시
-- WebSocket 이벤트 처리
-- 음성 및 텍스트 입력
-- 사용자 선택 및 최종 승인 화면 구현
-
-### 개발자 B — Backend & Automation
-
-- 브라우저 세션 관리
-- REST API 및 WebSocket 구현
-- Playwright 기반 브라우저 제어
-- DOM 정제
-- AI 응답 검증
-- 보안 입력 및 최종 승인 Gate 구현
-
-### 개발자 C — AI Engine & Integration
-
-- 사용자 Intent 분류
-- AI 요청·응답 Schema 관리
-- 다음 Action 및 대상 요소 판단
-- 위험 요청 감지
-- 사용자 안내 문장 생성
-- Backend와 AI Engine 통합
-
----
-
-## 브랜치 운영
-
-```text
-main
-develop
-feature/*
-hotfix/*
-```
-
-- `main`: 배포 가능한 안정 버전
-- `develop`: 기능 통합 브랜치
-- `feature/*`: 기능별 작업 브랜치
-- Pull Request는 기본적으로 `develop`을 대상으로 생성합니다.
-
-커밋 메시지 예시:
-
-```text
-feat: AI intent 분류 기능 추가
-fix: 민감정보 DOM 마스킹 수정
-docs: API 계약 문서 수정
-test: 정기예금 시나리오 테스트 추가
-```
+과거 `frontend-d*`, `demo-bank-d*`, Day 문서는 구현 이력을 보존한 참고 자료이며 현재 배포 절차의 기준이 아닙니다.

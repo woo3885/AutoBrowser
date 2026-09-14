@@ -1,5 +1,7 @@
 # 프론트 D13 Web Speech API 기반 TTS 안내
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목적과 범위
 
 D13은 부모가 민감정보를 제거한 안전한 한 문장 안내를 Web Speech API로

@@ -1,5 +1,7 @@
 # 데모뱅크 D15 Playwright 인수인계
 
+> **개발 이력:** 선택형 Demo Bank/Playwright 테스트 자료입니다. 표준 AutoBrowser 배포에는 Demo Bank가 필요하지 않습니다. [문서 색인](../../docs/README.md)을 우선하세요.
+
 ## 1. 목적과 범위
 
 D15는 예금 약관 확인 뒤 사용자가 계좌 비밀번호를 직접 입력하는 보안 입력

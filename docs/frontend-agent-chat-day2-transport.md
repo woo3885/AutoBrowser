@@ -1,5 +1,7 @@
 # 대화형 AI Agent Day 2 transport
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목적과 범위
 
 Day 1의 Demo Bank 우측 AI 채팅 패널을 Backend conversation API와 raw STOMP WebSocket에 연결한다. Day 2는 자연어 메시지, 추가 질문과 답변, 대화 snapshot 복원, 수동 STT·TTS까지만 담당한다. Browser Action, DOM overlay, target token, Viewer 제거, 약관 자동 동의, 보안 입력 및 최종 승인 자동화는 포함하지 않는다.

@@ -1,5 +1,7 @@
 # 프론트 WebSocket 이벤트
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 1. WebSocket 수신 구조
 
 프론트는 세션 생성 응답으로 받은 WebSocket 주소에 연결하고, JSON 메시지의

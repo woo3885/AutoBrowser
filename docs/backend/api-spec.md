@@ -1,5 +1,7 @@
 # 금융길잡이 AI Backend API 명세
 
+> **현재 기준(2026-09-14):** Chrome Extension은 9절의 `/api/v1/extension/sessions` API를 사용합니다. 5~8절의 자동화 세션 API는 루트 Viewer/Playwright 호환 경로입니다.
+
 ## 1. 기본 정보
 
 - Base URL: `/api/v1`
@@ -200,10 +202,10 @@
 
 ## 6. 현재 저장 방식
 
-현재 자동화 세션은 서버 메모리의 `ConcurrentHashMap`에 임시 저장한다.
+자동화 세션 저장소는 `DDD_SESSION_STORE_TYPE`으로 선택한다. 기본값은 `memory`이며 `redis` 구성을 사용할 수 있다.
 
-- 서버를 재시작하면 기존 세션은 삭제된다.
-- 이후 Redis 기반 저장소로 교체할 예정이다.
+- `memory`에서는 서버를 재시작하면 기존 세션이 삭제된다.
+- `redis`에서는 `REDIS_HOST`, `REDIS_PORT`, `DDD_SESSION_TTL`을 설정한다.
 - 도메인 계층은 저장 방식과 분리하기 위해 `AutomationSessionRepository` 인터페이스를 사용한다.
 
 ## 7. 사용자 결정 API
@@ -318,11 +320,9 @@ CANCELLED
 - 존재하지 않는 세션: `404 SESSION_404`
 - 잘못된 세션 상태: `409 SESSION_409`
 
-### 7.5 현재 제한사항
+### 7.5 확인 계약
 
-현재 버전은 `confirmationId`의 필수 여부와 형식만 검증한다.
-
-백엔드 세션에 대기 중인 `confirmationId`를 저장하고 요청값과 일치하는지 검증하는 기능은 AI 응답 및 최종 확인 요청 저장 구조를 연결할 때 추가한다.
+Backend는 대기 중인 confirmation을 저장하고 `confirmationId`, request/frame 문맥, 만료와 중복 소비를 검증한다. 자세한 내부 이력은 `backend/docs/d27-final-confirmation-contract.md`와 `d28-final-confirmation-concurrency-trace.md`를 참고하되, Chrome Extension 경로에서는 페이지의 최종 실행 요소를 Content Script에서도 자동 클릭하지 않는다.
 
 ## 8. 주요 워크플로 상태
 
@@ -338,3 +338,87 @@ CANCELLED
 - `CANCELLED`
 - `ERROR`
 - `TERMINATED`
+
+## 9. Chrome Extension 세션 API
+
+확장 프로그램은 사용자가 연 현재 탭을 소유하므로 Backend에 임의 URL이나 화면 이미지를 보내지 않습니다. 사용자 메시지와 정제 DOM 스냅샷을 함께 전송합니다.
+
+### 9.1 세션 생성
+
+- Method: `POST`
+- URL: `/api/v1/extension/sessions`
+- 성공 상태: `201 Created`
+
+### 9.2 후속 메시지
+
+- Method: `POST`
+- URL: `/api/v1/extension/sessions/{sessionId}/messages`
+
+두 endpoint의 요청 형식:
+
+```json
+{
+  "requestId": "ext-request-uuid",
+  "messageId": "ext-message-uuid",
+  "content": "현재 페이지 설명",
+  "pageIdentity": "12:https://example.com/",
+  "snapshot": {
+    "schemaVersion": "1.0",
+    "snapshotId": "snapshot-id",
+    "page": {
+      "url": "https://example.com/",
+      "title": "Example",
+      "productId": null,
+      "productName": null,
+      "productPeriod": null,
+      "depositAmount": null
+    },
+    "elements": []
+  }
+}
+```
+
+`requestId`, `messageId`는 최대 128자, `content`는 최대 500자, `pageIdentity`는 최대 512자입니다. `snapshot`의 전체 계약은 Backend `SanitizedDomSnapshot`과 확장 프로그램 `content-script.js`가 기준입니다.
+
+### 9.3 동작 후 계속
+
+- Method: `POST`
+- URL: `/api/v1/extension/sessions/{sessionId}/continue`
+
+```json
+{
+  "pageIdentity": "12:https://example.com/next",
+  "snapshot": {
+    "schemaVersion": "1.0",
+    "snapshotId": "next-snapshot-id",
+    "page": {
+      "url": "https://example.com/next",
+      "title": "Next",
+      "productId": null,
+      "productName": null,
+      "productPeriod": null,
+      "depositAmount": null
+    },
+    "elements": []
+  }
+}
+```
+
+### 9.4 응답 data
+
+```json
+{
+  "sessionId": "session-id",
+  "mode": "INFORM_USER",
+  "message": "현재 페이지의 주요 기능을 안내합니다.",
+  "questionId": null,
+  "conversationSequence": 1,
+  "goal": {},
+  "sourceSnapshotId": "snapshot-id",
+  "action": null
+}
+```
+
+`mode`는 `AUTO_EXECUTE`, `GUIDE_USER`, `INFORM_USER`, `ASK_USER`, `SECURE_INPUT_REQUIRED`, `RISK_WARNING`, `FINAL_CONFIRMATION_REQUIRED`, `COMPLETE`, `STOP` 중 하나입니다. `GOAL_PATCH_PROPOSED`는 Backend 내부에서 처리되며 정상적인 공개 응답으로 끝나지 않습니다.
+
+확장 세션은 현재 Backend 프로세스 메모리에 저장되고 마지막 접근 후 30분 TTL을 사용합니다. Backend 재시작이나 다중 replica 환경에서는 세션 지속성 전략을 별도로 마련해야 합니다.

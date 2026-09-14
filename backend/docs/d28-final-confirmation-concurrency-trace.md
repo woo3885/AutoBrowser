@@ -1,5 +1,7 @@
 # D28 최종 확인 동시성·trace 계약
 
+> **개발 이력:** 레거시 Playwright/Viewer 흐름의 당시 계약입니다. 현재 Chrome Extension 경로는 [문서 색인](../../docs/README.md), [현재 아키텍처](../../docs/CURRENT_ARCHITECTURE.md), [API 명세](../../docs/backend/api-spec.md)를 우선합니다.
+
 D28의 authoritative 승인 gate는 Frontend `FinalConfirmationPanel` 하나로 통일한다. Demo 최종
 화면은 C가 안전하게 탐지할 수 있는 enabled final target을 제공하며, Backend는 기존 pending
 target을 사용자 승인 전에는 실행하지 않는다. Demo 내부 checkbox를 위한 자동 선택, polling,

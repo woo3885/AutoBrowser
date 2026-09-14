@@ -1,5 +1,7 @@
 # 프론트 D16 Integration Mock Preview 기준선
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 1. 목적과 범위
 
 D16은 D15까지 개별 구현된 프론트 기능을 하나의 실행 가능한 개발용 화면에서 조합해 보는 수준 1 Integration Mock Preview다. D15 일정에 포함되지 않았던 통합 기준선을 보완하고, D17~D19의 실제 계약 연동 전에 상태 전이와 컴포넌트 경계를 검증한다.

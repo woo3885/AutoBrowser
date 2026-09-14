@@ -1,5 +1,7 @@
 # 프론트 D6 Canvas 원격 화면 Viewer
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목표와 범위
 
 D6는 백엔드가 캡처한 원격 브라우저 화면을 표시할 Canvas Viewer의 입력 경계와 렌더링 골격을 제공한다. 실제 WebSocket 연결, Binary 처리, 사용자 좌표 전송, Target Highlight는 포함하지 않는다. Viewer는 실제 금융 기능을 실행하지 않으며 로컬 Mock에도 민감정보가 없다.

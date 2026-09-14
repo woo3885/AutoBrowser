@@ -1,5 +1,7 @@
 # STT 입력 결과 JSON 규격
 
+> **레거시 Frontend 규격:** 현재 Chrome Extension은 Web Speech API의 최종 인식 텍스트를 전송 전 입력창에 반영하며 이 이벤트 JSON을 Backend로 보내지 않습니다.
+
 ## 1. 목적
 
 프론트 음성 입력이 시작된 시점부터 중간 인식, 최종 인식과 오류까지 동일한

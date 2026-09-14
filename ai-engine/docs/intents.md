@@ -1,5 +1,7 @@
 # AI Intent 목록
 
+> **레거시 `/api/ai/action` 계약:** `contracts/api.ts`의 `IntentType`을 설명합니다. 현재 Chrome Extension 대화 경로의 goal intent는 `DEPOSIT | TRANSFER | INQUIRY | CHANGE | UNKNOWN`이며 최신 페이지를 매 turn 분석합니다.
+
 ## 목적
 
 이 문서는 금융길잡이 AI가 사용자 발화를 어떤 목적(Intent)으로 분류할지 정의한다.

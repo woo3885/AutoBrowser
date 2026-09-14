@@ -1,5 +1,7 @@
 # 프론트 D17 실제 세션·프레임 연동
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목적과 범위
 
 D17은 실제 Backend에서 데모 세션을 생성하고 `/transfer/accounts`의 첫 1280×720 PNG 프레임을 raw WebSocket으로 받아 기존 `F2_StreamViewer` Canvas에 표시한다. 이 화면은 연동 확인용 개발 Preview이며 실제 금융거래를 수행하지 않는다.

@@ -1,5 +1,7 @@
 # 프론트 D7 이미지 프레임 스트림 Mock
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목표와 구조
 
 D7은 실제 WebSocket 서버 없이 여러 이미지 프레임을 순서대로 D6 Canvas Viewer에 전달하는 Mock 스트림을 제공한다. 기존 `ViewerFrame`의 `BrowserFrameEvent` metadata와 `imageSrc` 경계를 그대로 재사용한다.

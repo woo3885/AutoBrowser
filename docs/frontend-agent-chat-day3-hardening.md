@@ -1,5 +1,7 @@
 # Frontend Agent Chat Day 3 보호 상태·복구 강화
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목표
 
 Day 3는 대화형 Agent의 채팅, 음성, 실제 DOM 안내 Overlay, 클릭 관찰을 보호 상태와 재연결 경합에서도 fail-closed로 유지한다. 기존 D24 사용자 결정, D26 보안 입력, D27 최종 승인 Gate는 변경하거나 우회하지 않는다.

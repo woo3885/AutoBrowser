@@ -1,5 +1,7 @@
 # 메인 프론트 D25 정기예금 시나리오 UI
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목표와 완료 경계
 
 D25는 Dashboard에서 정기예금 업무를 시작한 뒤 production 세션의 Frame, 상태, 사용자 결정 이벤트를 기존 통합 화면으로 표시한다. 상품과 약관은 사용자가 직접 선택하고 별도 확인하며, 비밀번호 화면의 `SECURE_INPUT_REQUIRED`에서 안전하게 중단한다.

@@ -1,5 +1,7 @@
 # 프론트 D14 공통 Workflow 상태 패널
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 1. 목적과 범위
 
 D14는 메인 프론트에서 재사용할 공통 Workflow 상태 패널을 제공한다. 캘린더

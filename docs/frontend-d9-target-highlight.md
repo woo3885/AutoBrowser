@@ -1,5 +1,7 @@
 # 프론트엔드 D9 Target Highlight
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 1. 목표와 범위
 
 D9은 1280 × 720 서버 화면 좌표로 전달된 Target을 실제 Canvas 표시 크기에 맞춰 변환하고, Canvas 위에 고대비 테두리와 포인터로 안내하는 Mock UI를 제공한다. 현재 구현은 로컬 Mock 프레임과 좌표를 사용하며 실제 WebSocket 또는 서버 연동 완료를 의미하지 않는다.

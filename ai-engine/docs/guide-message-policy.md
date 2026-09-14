@@ -1,5 +1,7 @@
 # 한 문장 안내 규칙
 
+> **공통 안전 문구 원칙:** 상태 예시는 레거시 이름을 포함할 수 있습니다. 현재 대화 mode는 [`conversationAgent.types.ts`](../src/conversation/conversationAgent.types.ts)를 기준으로 합니다.
+
 ## 목적
 
 사용자에게 표시하거나 음성으로 읽어 줄 AI 안내 문장의 형식을 통일한다.

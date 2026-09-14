@@ -1,5 +1,7 @@
 # D17 Viewer Frame·Action 연동 기반
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목적
 
 데모 일정 D17을 재개하기 위해 실제 session-frame 수신 결과를 Viewer Action

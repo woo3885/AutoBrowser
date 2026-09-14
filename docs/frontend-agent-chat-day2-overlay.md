@@ -1,5 +1,7 @@
 # Frontend Agent Chat Day 2 — Same-page Overlay
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목적과 범위
 
 Demo Bank의 실제 DOM을 주 화면으로 유지하면서 Backend가 제공한 안전한 공개 Target을 강조하고, 사용자가 실제 요소를 직접 누른 사실을 Backend에 전달한다. Canvas Viewer 좌표, 자동 클릭, raw selector는 이 경로에서 사용하지 않는다.

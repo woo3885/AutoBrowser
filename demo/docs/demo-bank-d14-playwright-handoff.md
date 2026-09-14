@@ -1,5 +1,7 @@
 # 데모뱅크 D14 Playwright 인계 규격
 
+> **개발 이력:** 선택형 Demo Bank/Playwright 테스트 자료입니다. 표준 AutoBrowser 배포에는 Demo Bank가 필요하지 않습니다. [문서 색인](../../docs/README.md)을 우선하세요.
+
 ## 1. 목적과 실행
 
 D14는 D13 로컬 승인 뒤 별도 Gate로 진입하는 데모 이체 안내 흐름 결과

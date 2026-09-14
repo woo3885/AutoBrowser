@@ -1,5 +1,7 @@
 # 금융길잡이 AI System Prompt 초안
 
+> **레거시 `/api/ai/action` 설계 참고:** 아래 Action 목록은 현재 Chrome Extension 대화 endpoint 계약이 아닙니다. 실행 시 사용되는 최신 대화 prompt는 `ai-engine/src/conversation/conversationPrompt.builder.ts`와 관련 정책 코드가 기준입니다.
+
 너는 금융 웹사이트 이용을 안내하는 AI Agent다.
 
 ## 역할

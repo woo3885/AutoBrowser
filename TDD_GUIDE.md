@@ -1,48 +1,64 @@
-# TDD 가이드라인 (팀 공통)
+# TDD 가이드라인
 
-이 문서는 기능 단위(F-1 ~ F-5) 개발 시 테스트 우선 방식(Test-Driven Development)을 적용하기 위한 규칙입니다.
+기준일: 2026-09-14
 
-## 1) 기본 원칙
+AutoBrowser의 실행 모듈별 테스트 도구가 다르므로 변경한 경로에서 가장 가까운 테스트부터 실행한 뒤 전체 모듈 검증으로 넓힙니다.
 
-- 작은 요구사항 하나를 먼저 테스트로 작성합니다.
-- 테스트를 실패(Red)시키고, 최소 코드로 통과(Green)시킵니다.
-- 마지막으로 중복 제거와 구조 개선(Refactor)을 진행합니다.
-- 한 커밋에는 가능하면 하나의 의도를 담습니다.
+## 기본 원칙
 
-## 2) 테스트 작성 위치
+1. 요구사항을 Given/When/Then 또는 재현 절차로 먼저 정리합니다.
+2. 실패하는 테스트를 추가해 문제를 재현합니다.
+3. 최소 변경으로 테스트를 통과시킵니다.
+4. 계약·안전 경계의 회귀 테스트를 추가합니다.
+5. 리팩터링 후 빌드까지 확인합니다.
 
-- 스토어 테스트: src/store/*.test.ts
-- 컴포넌트 테스트: 각 컴포넌트 폴더 내 *.test.tsx
+## 모듈별 명령
 
-예시:
-- src/store/useGuideStore.test.ts
-- src/components/F1_Dashboard/F1_Dashboard.test.tsx
+```powershell
+# Chrome Extension
+cd chrome-extension
+npm test
+npm run build
 
-## 3) 작업 순서 (기능별)
+# AI Engine
+cd ..\ai-engine
+npm test
+npm run check
+npm run build
 
-1. 기능 요구사항을 Given/When/Then으로 한 줄 정리
-2. 테스트 파일에 실패 테스트 작성
-3. 최소 코드 구현
-4. npm run test로 통과 확인
-5. 리팩터링 후 다시 테스트
-6. 커밋 후 PR 생성
+# Backend
+cd ..\backend
+.\gradlew.bat test
 
-## 4) 테스트 명명 규칙
+# 레거시 루트 Viewer
+Set-Location ..
+npm test
+npm run build
 
-- it('빈 URL에서 안내 시작 시 에러 멘트를 저장한다', ...)
-- it('유효 URL 입력 후 안내 시작 시 상태와 이력을 갱신한다', ...)
+# 선택형 Demo Bank
+cd demo\demo-bank
+npm test
+npm run build
+```
 
-행동 중심 문장으로 작성하고, 구현 디테일보다는 사용자/상태 변화에 집중합니다.
+실제 Gemini를 호출하는 `ai-engine`의 `npm run test:live`는 API key, quota와 비용을 확인한 뒤 명시적으로 실행합니다.
 
-## 5) 실행 명령어
+## 필수 회귀 경계
 
-- npm run test
-- npm run test:watch
-- npm run test:coverage
+- 정제 DOM에 실제 입력값과 인증정보가 포함되지 않는가
+- stale `snapshotId`와 존재하지 않는 `elementId` 실행을 거부하는가
+- 비밀번호·OTP·카드번호와 최종 실행 요소를 자동 조작하지 않는가
+- AI 계약 위반과 network 오류가 임의 동작으로 이어지지 않는가
+- 확장 번들에 Node 전역이 남지 않는가
+- 세션 만료·Backend 재시작 후 새 세션으로 안전하게 복구하는가
 
-## 6) PR 체크리스트
+## 테스트 이름
 
-- [ ] 새 기능에 대한 테스트를 먼저 작성했다.
-- [ ] 테스트가 실패하는 것을 확인한 뒤 구현했다.
-- [ ] 테스트와 구현이 모두 통과한다.
-- [ ] 기존 테스트를 깨지 않았다.
+구현 방법보다 관찰 가능한 동작을 설명합니다.
+
+```text
+잘못된 예: validator 함수를 호출한다
+좋은 예: 비밀번호 input을 자동 입력 대상으로 반환하지 않는다
+```
+
+한 커밋에는 가능하면 하나의 의도를 담고, PR 또는 커밋 설명에 실행한 테스트와 수동 확인 환경을 기록합니다.

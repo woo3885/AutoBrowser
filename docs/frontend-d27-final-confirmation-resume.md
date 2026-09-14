@@ -1,5 +1,7 @@
 # 메인 프론트 D27 최종 승인·거절 연동
 
+> **개발 이력:** 루트 Viewer/Demo 기반 당시 구현 기록입니다. 현재 운영 구조와 실행 방법은 [문서 색인](README.md)과 [현재 아키텍처](CURRENT_ARCHITECTURE.md)를 우선하세요.
+
 ## 목적
 
 D27은 Backend가 발행한 `FINAL_CONFIRMATION_REQUIRED` 계약을 메인 프론트의

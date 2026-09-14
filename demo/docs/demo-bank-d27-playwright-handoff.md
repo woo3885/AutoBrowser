@@ -1,5 +1,7 @@
 # Demo Bank D27 Playwright 인계 규격
 
+> **개발 이력:** 선택형 Demo Bank/Playwright 테스트 자료입니다. 표준 AutoBrowser 배포에는 Demo Bank가 필요하지 않습니다. [문서 색인](../../docs/README.md)을 우선하세요.
+
 ## 목적과 범위
 
 D27은 정기예금 시나리오의 최종 확인·거절·Demo 완료 DOM 계약을 제공한다.
