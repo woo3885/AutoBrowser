@@ -18,7 +18,7 @@ AutoBrowser는 사용자가 보고 있는 Chrome 웹페이지를 이해하고, �
 - **주 사용자 인터페이스:** `chrome-extension`
 - **필수 서버:** `backend`, `ai-engine`
 - **선택/레거시:** 루트 React Viewer, `demo/demo-bank`, `security-session`
-- **범용성:** 특정 Demo Bank 흐름을 미리 재생하지 않고 매 요청마다 현재 페이지의 정제된 DOM을 분석합니다.
+- **범용성:** 특정 흐름을 미리 재생하지 않고 매 요청마다 현재 페이지의 정제된 DOM을 분석합니다.
 
 ## 빠른 시작
 
